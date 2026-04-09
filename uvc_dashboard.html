@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ICU-Air-Twin V5.0 · Eric-UVC Unified Field Model</title>
+<style>
+/* ═══════════════════════════ RESET & TOKENS ═══════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060a10; --card:rgba(9,15,26,.88); --border:rgba(40,70,100,.5);
+  --green:#00e87a; --green-rgb:0,232,122;
+  --red:#ff4455;   --red-rgb:255,68,85;
+  --blue:#38bdf8;  --blue-rgb:56,189,248;
+  --yel:#fbbf24;   --yel-rgb:251,191,36;
+  --ora:#fb923c;   --ora-rgb:251,146,60;
+  --pur:#a78bfa;   --pur-rgb:167,139,250;
+  --cyn:#22d3ee;   --cyn-rgb:34,211,238;
+  --dim:#1a2d42; --mid:#3a5a78; --text:#7a9aba; --hi:#c0d8f0;
+  --mono:'Courier New','Lucida Console',monospace;
+  --sans:-apple-system,'Helvetica Neue',Arial,sans-serif;
+}
+html{background:var(--bg);color:var(--text);font-family:var(--sans)}
+body{min-height:100vh;overflow-x:hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%,rgba(56,189,248,.06) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%,rgba(0,232,122,.04) 0%,transparent 55%),
+    var(--bg)}
+
+/* ═══════════════════════════ LAYOUT ═══════════════════════════ */
+.shell{max-width:1280px;margin:0 auto;padding:16px 16px 110px;display:flex;flex-direction:column;gap:12px}
+
+/* ═══════════════════════════ HEADER ═══════════════════════════ */
+.hdr{display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(56,189,248,.15);padding-bottom:12px}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.live-dot{width:9px;height:9px;border-radius:50%;background:var(--green);
+  animation:liveB 2.4s ease-in-out infinite}
+@keyframes liveB{
+  0%,100%{box-shadow:0 0 0 3px rgba(0,232,122,.2),0 0 8px rgba(0,232,122,.3)}
+  50%    {box-shadow:0 0 0 7px rgba(0,232,122,.05),0 0 18px rgba(0,232,122,.5)}}
+.hdr-title{font-family:var(--mono);font-size:.78rem;letter-spacing:.2em;color:var(--hi);text-transform:uppercase}
+.ver-tag{font-size:.58rem;color:var(--mid);background:rgba(56,189,248,.1);
+  border:1px solid rgba(56,189,248,.25);border-radius:3px;padding:1px 6px;
+  margin-left:6px;vertical-align:middle;letter-spacing:.1em}
+.hdr-r{display:flex;gap:20px;align-items:center}
+.hdr-chip{font-family:var(--mono);font-size:.63rem;letter-spacing:.1em;color:var(--mid);
+  line-height:1.7;text-align:right}
+.hdr-chip .v{color:var(--hi)}
+#hdrClock{color:var(--blue);font-size:.8rem}
+
+/* ═══════════════════════════ GLASS CARD ═══════════════════════════ */
+.cs{border-radius:14px;padding:1px;transition:box-shadow .4s}
+.cs-r {background:linear-gradient(135deg,rgba(255,68,85,.55),rgba(255,255,255,.04) 45%,rgba(255,68,85,.18));box-shadow:0 0 28px rgba(255,68,85,.08)}
+.cs-b {background:linear-gradient(135deg,rgba(56,189,248,.5),rgba(255,255,255,.04) 45%,rgba(167,139,250,.25));box-shadow:0 0 28px rgba(56,189,248,.07)}
+.cs-y {background:linear-gradient(135deg,rgba(251,191,36,.45),rgba(255,255,255,.04) 45%,rgba(251,146,60,.25));box-shadow:0 0 28px rgba(251,191,36,.07)}
+.cs-g {background:linear-gradient(135deg,rgba(0,232,122,.5),rgba(255,255,255,.04) 45%,rgba(34,211,238,.2));box-shadow:0 0 28px rgba(0,232,122,.07)}
+.cs-o {background:linear-gradient(135deg,rgba(251,146,60,.5),rgba(255,255,255,.04) 45%,rgba(251,191,36,.2));box-shadow:0 0 28px rgba(251,146,60,.07)}
+.cs-p {background:linear-gradient(135deg,rgba(167,139,250,.5),rgba(255,255,255,.04) 45%,rgba(56,189,248,.2));box-shadow:0 0 28px rgba(167,139,250,.07)}
+.cs-r.is-alert{animation:aShell .7s step-end infinite;box-shadow:0 0 40px rgba(255,68,85,.3)}
+@keyframes aShell{0%,100%{box-shadow:0 0 40px rgba(255,68,85,.35)}50%{box-shadow:0 0 12px rgba(255,68,85,.08)}}
+.card{background:var(--card);border-radius:13px;padding:16px 18px 14px;
+  position:relative;overflow:hidden;height:100%;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.card::after{content:'';position:absolute;inset:0;border-radius:13px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(255,255,255,.025) 0%,transparent 55%)}
+.ctag{font-family:var(--mono);font-size:.56rem;letter-spacing:.2em;color:var(--mid);text-transform:uppercase;margin-bottom:3px}
+.cname{font-size:.73rem;color:var(--hi);letter-spacing:.05em;
+  padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:12px}
+
+/* ═══════════════════════════ HALO ═══════════════════════════ */
+.halo{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
+  font-size:.6rem;letter-spacing:.14em;text-transform:uppercase}
+.halo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hg .halo-dot{background:var(--green);animation:hG 2.2s ease-in-out infinite}
+@keyframes hG{0%,100%{box-shadow:0 0 0 2px rgba(0,232,122,.18),0 0 6px rgba(0,232,122,.3)}
+              50%    {box-shadow:0 0 0 5px rgba(0,232,122,.07),0 0 16px rgba(0,232,122,.55)}}
+.hr .halo-dot{background:var(--red);animation:hR .65s step-end infinite}
+@keyframes hR{0%,100%{opacity:1}50%{opacity:.15}}
+.hy .halo-dot{background:var(--yel);animation:hY 2s ease-in-out infinite}
+@keyframes hY{0%,100%{box-shadow:0 0 0 2px rgba(251,191,36,.2),0 0 6px rgba(251,191,36,.3)}
+              50%    {box-shadow:0 0 0 5px rgba(251,191,36,.07),0 0 14px rgba(251,191,36,.5)}}
+.hb .halo-dot{background:var(--blue);animation:hB 2.5s ease-in-out infinite}
+@keyframes hB{0%,100%{box-shadow:0 0 0 2px rgba(56,189,248,.18),0 0 6px rgba(56,189,248,.28)}
+              50%    {box-shadow:0 0 0 5px rgba(56,189,248,.06),0 0 14px rgba(56,189,248,.45)}}
+.ho .halo-dot{background:var(--ora);animation:hO 2.1s ease-in-out infinite}
+@keyframes hO{0%,100%{box-shadow:0 0 0 2px rgba(251,146,60,.2),0 0 6px rgba(251,146,60,.3)}
+              50%    {box-shadow:0 0 0 5px rgba(251,146,60,.07),0 0 14px rgba(251,146,60,.5)}}
+
+/* ═══════════════════════════ NUMBERS ═══════════════════════════ */
+.bnrow{display:flex;align-items:flex-end;gap:6px;margin-bottom:2px}
+.bn{font-family:var(--mono);font-weight:700;font-size:3.2rem;line-height:1;
+  font-variant-numeric:tabular-nums;will-change:transform;transition:color .3s,text-shadow .3s}
+.bn.pulse{animation:nP .22s ease-out forwards}
+@keyframes nP{0%{transform:scale(1.055)}100%{transform:scale(1)}}
+.bnu{font-family:var(--mono);font-size:.65rem;color:var(--mid);letter-spacing:.1em;padding-bottom:8px}
+.sval{font-family:var(--mono);font-weight:700;font-size:1.5rem;
+  font-variant-numeric:tabular-nums;line-height:1}
+.sval.pulse{animation:nP .22s ease-out forwards}
+.sunit{font-size:.6rem;color:var(--mid);letter-spacing:.08em}
+
+/* ═══════════════════════════ SPARKLINE ═══════════════════════════ */
+.spkw{position:relative;height:38px;margin:5px 0 7px}
+.spkw canvas{display:block;width:100%;height:100%}
+.spkw.sm{height:26px;margin:3px 0 5px}
+
+/* ═══════════════════════════ BARS & BADGES ═══════════════════════════ */
+.btrack{background:rgba(10,20,35,.9);border-radius:4px;overflow:hidden;height:5px;margin-bottom:7px}
+.bfill{height:100%;border-radius:4px;transition:width .8s ease}
+.rbadge{margin-left:auto;font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;
+  padding:2px 7px;border-radius:3px;border:1px solid currentColor;text-transform:uppercase}
+.sublabel{font-size:.58rem;letter-spacing:.14em;color:var(--mid);text-transform:uppercase;margin-bottom:2px}
+.subrow{display:flex;align-items:baseline;gap:5px}
+
+/* ═══════════════════════════ SPEC TABLE ═══════════════════════════ */
+.stbl{display:flex;flex-direction:column}
+.srow{display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.66rem}
+.srow:last-child{border-bottom:none}
+.sk{color:var(--mid);letter-spacing:.07em}
+.sv{font-family:var(--mono);color:var(--hi)}
+.sv.ok{color:var(--green)} .sv.warn{color:var(--yel)} .sv.crit{color:var(--red)}
+
+/* ═══════════════════════════ PARTICLE DIST ═══════════════════════════ */
+.pdist{display:flex;flex-direction:column;gap:4px;margin-top:5px}
+.pdrow{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.59rem}
+.pdlbl{width:36px;color:var(--mid);text-align:right;flex-shrink:0}
+.pdtrack{flex:1;background:rgba(10,20,35,.8);border-radius:3px;height:5px;overflow:hidden}
+.pdfill{height:100%;border-radius:3px;transition:width .8s ease}
+.pdval{width:42px;color:var(--text);text-align:right;flex-shrink:0}
+
+/* ═══════════════════════════ OCC DOTS ═══════════════════════════ */
+.odots{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0}
+.odot{width:11px;height:11px;border-radius:50%;
+  background:var(--dim);border:1px solid rgba(255,255,255,.08);transition:background .3s,box-shadow .3s}
+.odot.on{background:var(--ora);border-color:var(--ora);box-shadow:0 0 7px rgba(251,146,60,.5)}
+
+/* ═══════════════════════════ CONTROL BARS ═══════════════════════════ */
+.ctrlbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:9px 14px;border-radius:8px;
+  background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.16)}
+.ctl-pill{display:flex;align-items:center;gap:7px;
+  background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.28);
+  border-radius:20px;padding:5px 13px;font-family:var(--mono);font-size:.63rem;
+  letter-spacing:.12em;color:var(--cyn);cursor:pointer;transition:background .2s}
+.ctl-pill:hover{background:rgba(34,211,238,.15)}
+.ctl-pill.api{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.38);color:var(--yel)}
+.pill-dot{width:7px;height:7px;border-radius:50%;background:currentColor;
+  animation:liveB 2s ease-in-out infinite;flex-shrink:0}
+.ctl-sep{width:1px;height:18px;background:rgba(255,255,255,.08);flex-shrink:0}
+.ctl-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--mid)}
+.ctl-label .cv{color:var(--cyn)}
+.ctl-btn{background:transparent;border:1px solid rgba(167,139,250,.32);
+  border-radius:5px;padding:4px 11px;font-family:var(--mono);font-size:.61rem;
+  letter-spacing:.12em;color:var(--pur);cursor:pointer;transition:background .2s}
+.ctl-btn:hover{background:rgba(167,139,250,.12)}
+
+/* pathogen select */
+.path-grp{display:flex;align-items:center;gap:6px}
+.path-grp label{font-family:var(--mono);font-size:.61rem;letter-spacing:.1em;color:var(--mid)}
+select.path-sel{background:rgba(10,18,32,.9);border:1px solid rgba(167,139,250,.28);
+  border-radius:4px;padding:4px 8px;font-family:var(--mono);font-size:.62rem;
+  color:var(--pur);outline:none;cursor:pointer}
+
+/* shielding tag */
+.shield-tag{font-family:var(--mono);font-size:.59rem;letter-spacing:.1em;
+  padding:3px 8px;border-radius:3px;border:1px solid currentColor;text-transform:uppercase;
+  transition:color .3s}
+.s-off{color:var(--green)} .s-on{color:var(--yel);animation:hY 1.5s ease-in-out infinite}
+
+/* ═══════════════════════════ HVAC PANEL ═══════════════════════════ */
+.hvac-panel{display:none;
+  background:rgba(9,15,26,.95);border:1px solid rgba(56,189,248,.2);
+  border-radius:10px;padding:16px 20px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hvac-panel.open{display:block}
+.hvac-title{font-family:var(--mono);font-size:.67rem;letter-spacing:.16em;
+  color:var(--blue);text-transform:uppercase;margin-bottom:13px;
+  display:flex;align-items:center;gap:8px}
+.hvac-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.hvac-block{display:flex;flex-direction:column;gap:7px;
+  background:rgba(56,189,248,.04);border:1px solid rgba(56,189,248,.12);
+  border-radius:7px;padding:11px 13px}
+.hvac-block-title{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;
+  color:var(--blue);text-transform:uppercase;margin-bottom:3px}
+.hvac-row{display:flex;align-items:center;gap:8px;font-size:.65rem}
+.hvac-row label{color:var(--mid);letter-spacing:.08em;min-width:52px;flex-shrink:0}
+.hvac-row input[type=range]{flex:1;accent-color:var(--blue);height:3px;cursor:pointer}
+.hvac-row .hv{font-family:var(--mono);color:var(--hi);min-width:48px;text-align:right;font-size:.65rem}
+.hvac-row input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;cursor:pointer}
+.press-grp{display:flex;gap:8px}
+.press-btn{flex:1;background:rgba(10,18,32,.8);border:1px solid var(--border);
+  border-radius:5px;padding:5px 0;font-family:var(--mono);font-size:.62rem;
+  letter-spacing:.1em;color:var(--mid);cursor:pointer;text-align:center;transition:all .2s}
+.press-btn.on{border-color:var(--blue);color:var(--blue);background:rgba(56,189,248,.1)}
+.hvac-note{font-size:.58rem;color:var(--mid);line-height:1.6;margin-top:8px;
+  padding-top:8px;border-top:1px solid rgba(255,255,255,.05)}
+.hvac-note .cn{color:var(--cyn)} .hvac-note .gn{color:var(--green)}
+
+/* ═══════════════════════════ CAL PANEL ═══════════════════════════ */
+.cal-panel{display:none;background:rgba(9,15,26,.95);
+  border:1px solid rgba(167,139,250,.28);border-radius:9px;
+  padding:15px 19px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.cal-panel.open{display:block}
+.cal-title{font-family:var(--mono);font-size:.66rem;letter-spacing:.15em;
+  color:var(--pur);text-transform:uppercase;margin-bottom:11px}
+.cal-formula{font-family:var(--mono);font-size:.76rem;color:var(--hi);
+  background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.15);
+  border-radius:5px;padding:7px 11px;margin-bottom:12px}
+.cal-formula .sym{color:var(--pur)}
+.cal-fields{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.cal-field{display:flex;align-items:center;gap:6px}
+.cal-field label{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--mid)}
+.cal-field input{width:70px;background:rgba(10,18,32,.9);
+  border:1px solid rgba(167,139,250,.28);border-radius:4px;
+  padding:4px 7px;font-family:var(--mono);font-size:.7rem;
+  color:var(--hi);text-align:right;outline:none}
+.cal-field input:focus{border-color:var(--pur);box-shadow:0 0 8px rgba(167,139,250,.3)}
+.cal-apply{background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.38);
+  border-radius:4px;padding:5px 14px;font-family:var(--mono);font-size:.62rem;
+  letter-spacing:.12em;color:var(--pur);cursor:pointer;transition:background .2s}
+.cal-apply:hover{background:rgba(167,139,250,.2)}
+.cal-note{font-size:.59rem;color:var(--mid);line-height:1.6;
+  border-top:1px solid rgba(255,255,255,.05);padding-top:8px}
+.cal-note .cn{color:var(--cyn)}
+
+/* ═══════════════════════════ PRED BOX ═══════════════════════════ */
+.pred-box{margin-top:8px;padding:9px 12px;border-radius:8px;
+  background:rgba(251,146,60,.07);border:1px solid rgba(251,146,60,.2)}
+.pred-label{font-size:.58rem;letter-spacing:.14em;color:var(--mid);text-transform:uppercase;margin-bottom:3px}
+.pred-val{font-family:var(--mono);font-size:1.55rem;font-weight:700;
+  color:var(--ora);font-variant-numeric:tabular-nums}
+.pred-trend{font-family:var(--mono);font-size:.72rem;margin-left:6px}
+
+/* ═══════════════════════════ CONTRIBUTION CHART ═══════════════════════════ */
+.contrib-wrap{margin-top:10px;padding:10px 12px;border-radius:8px;
+  background:rgba(0,232,122,.05);border:1px solid rgba(0,232,122,.15)}
+.contrib-title{font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;
+  color:var(--mid);text-transform:uppercase;margin-bottom:7px}
+.contrib-bar{height:18px;border-radius:4px;overflow:hidden;display:flex;margin-bottom:7px}
+.cb-seg{height:100%;transition:width .8s ease;position:relative}
+.contrib-legend{display:flex;gap:12px;flex-wrap:wrap}
+.cl-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:.58rem;color:var(--mid)}
+.cl-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.cl-val{color:var(--hi);margin-left:2px}
+
+/* equivalence row */
+.equiv-row{display:flex;justify-content:space-between;align-items:center;
+  margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.05);
+  font-family:var(--mono);font-size:.6rem}
+.equiv-k{color:var(--mid)} .equiv-v{color:var(--hi)}
+.equiv-v.best{color:var(--green);text-shadow:0 0 8px rgba(0,232,122,.5)}
+
+/* ═══════════════════════════ SENSOR HEALTH ═══════════════════════════ */
+.sbar{display:flex;align-items:center;gap:7px;margin-top:7px;font-family:var(--mono);font-size:.6rem}
+.sbar-lbl{color:var(--mid);letter-spacing:.1em;flex-shrink:0}
+.sbar-track{flex:1;background:rgba(10,20,35,.9);border-radius:3px;height:4px;overflow:hidden}
+.sbar-fill{height:100%;border-radius:3px;background:var(--green);
+  box-shadow:0 0 5px rgba(0,232,122,.4);transition:width .8s ease}
+.sbar-val{color:var(--green);width:32px;text-align:right;flex-shrink:0}
+
+/* ═══════════════════════════ UVC BLOCK ═══════════════════════════ */
+.uval{font-family:var(--mono);font-weight:700;font-size:1.9rem;
+  color:var(--blue);text-shadow:0 0 12px rgba(56,189,248,.5);
+  font-variant-numeric:tabular-nums;line-height:1}
+.uval.pulse{animation:nP .22s ease-out forwards}
+.uunit{font-size:.6rem;color:var(--mid);letter-spacing:.1em}
+.maint-box{margin-top:9px;padding:7px 10px;border-radius:7px;
+  background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.14);
+  font-family:var(--mono);font-size:.61rem;line-height:1.9;color:var(--mid)}
+.maint-box .mv{color:var(--cyn)}
+
+/* ═══════════════════════════ CFU STAMP ═══════════════════════════ */
+.cfu-est{font-family:var(--mono);font-size:.59rem;letter-spacing:.1em;
+  color:var(--mid);margin-top:-3px;margin-bottom:4px;
+  display:flex;align-items:center;gap:5px}
+.cfu-est::before{content:'◈';font-size:.5rem;color:var(--cyn)}
+.cal-stamp{margin-top:7px;padding:6px 9px;border-radius:6px;
+  background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.14);
+  font-family:var(--mono);font-size:.6rem;line-height:1.8;color:var(--mid)}
+.cal-stamp .cv{color:var(--cyn)} .cal-stamp .ov{color:var(--green)}
+
+/* ═══════════════════════════ LOG BAR ═══════════════════════════ */
+.log-bar{background:rgba(8,14,24,.92);border:1px solid rgba(56,189,248,.1);
+  border-radius:7px;padding:8px 16px;font-family:var(--mono);font-size:.62rem;
+  letter-spacing:.1em;color:var(--mid);overflow:hidden;white-space:nowrap}
+.lk{color:#00b85f} .lw{color:var(--yel)} .lc{color:var(--red)}
+
+/* ═══════════════════════════ SCIENCE BLOCK ═══════════════════════════ */
+.sci-block{background:rgba(6,10,16,.96);border:1px solid rgba(56,189,248,.13);
+  border-radius:9px;padding:14px 20px}
+.sci-hd{font-family:var(--mono);font-size:.65rem;letter-spacing:.18em;color:var(--blue);
+  text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sci-eq{font-family:var(--mono);font-size:.75rem;
+  background:rgba(56,189,248,.05);border:1px solid rgba(56,189,248,.1);
+  border-radius:5px;padding:8px 14px;margin-bottom:8px;line-height:1.9;color:var(--hi)}
+.sci-eq .fhi{color:var(--blue)} .sci-eq .fk{color:var(--pur)}
+.sci-eq .fg{color:var(--green)} .sci-eq .fy{color:var(--yel)}
+.sci-eq .fr{color:var(--red)}
+.sci-vars{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 24px;font-size:.6rem;
+  line-height:1.8;color:var(--mid);margin-bottom:8px}
+.sci-vars .vn{color:var(--cyn)} .sci-vars .vv{color:var(--text)}
+.sci-refs{font-size:.59rem;color:var(--dim);border-top:1px solid rgba(255,255,255,.05);
+  padding-top:7px;line-height:1.8}
+.sci-refs .rh{color:var(--mid)}
+
+/* ═══════════════════════════ GRID ═══════════════════════════ */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+
+/* ═══════════════════════════ BOOST ═══════════════════════════ */
+.boost-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:400;
+  background:rgba(255,68,85,.1);border-bottom:2px solid var(--red);
+  padding:8px 0;text-align:center;font-family:var(--mono);
+  font-size:.82rem;letter-spacing:.22em;color:var(--red);font-weight:700;
+  text-transform:uppercase;animation:bBlink .55s step-end infinite}
+.boost-banner.on{display:block}
+@keyframes bBlink{0%,100%{opacity:1}50%{opacity:.15}}
+.bb-cd{font-size:.66rem;color:#ff8898;margin-left:12px;letter-spacing:.14em}
+.dna-line{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;
+  color:var(--cyn);margin-top:2px;animation:dnaF .4s step-end infinite}
+@keyframes dnaF{0%,100%{opacity:1}50%{opacity:.18}}
+
+/* DNA canvas overlay */
+#dnaCanvas{display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:350;opacity:.22}
+#dnaCanvas.on{display:block}
+
+.boost-wrap{position:fixed;bottom:22px;right:22px;z-index:300;
+  background:rgba(255,68,85,.08);border:1px solid rgba(255,68,85,.35);
+  border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  width:86px;height:86px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .25s,box-shadow .25s;
+  box-shadow:0 0 22px rgba(255,68,85,.12)}
+.boost-wrap:hover{background:rgba(255,68,85,.15);box-shadow:0 0 34px rgba(255,68,85,.26)}
+.boost-wrap.on{background:rgba(255,68,85,.2);animation:bWPulse .7s ease-in-out infinite alternate}
+@keyframes bWPulse{from{box-shadow:0 0 16px rgba(255,68,85,.35)}
+                   to  {box-shadow:0 0 46px rgba(255,68,85,.65),0 0 78px rgba(255,68,85,.2)}}
+.bsvg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.bsvg .rg{fill:none;stroke:rgba(255,68,85,.15);stroke-width:3}
+.bsvg .rf{fill:none;stroke:var(--red);stroke-width:3;stroke-linecap:round;
+  stroke-dasharray:239;stroke-dashoffset:239;transition:stroke-dashoffset .95s linear;
+  filter:drop-shadow(0 0 3px rgba(255,68,85,.7))}
+.boost-inner{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;font-family:var(--mono);
+  font-size:.51rem;letter-spacing:.1em;color:var(--red);text-transform:uppercase;
+  text-align:center;pointer-events:none}
+</style>
+</head>
+<body>
+
+<!-- DNA canvas overlay (boost visual) -->
+<canvas id="dnaCanvas"></canvas>
+
+<!-- Boost Banner -->
+<div class="boost-banner" id="boostBanner">
+  ⚠ BOOST MODE ACTIVE &nbsp;|&nbsp; I = 100 mW/cm² &nbsp;|&nbsp; k·S·I MAX
+  <span class="bb-cd" id="boostCd"></span>
+  <span class="dna-line">◈ DNA 鏈結切割中 · DOUBLE-STRAND BREAK INDUCTION ACTIVE ◈</span>
+</div>
+
+<div class="shell">
+
+<!-- ── HEADER ── -->
+<header class="hdr">
+  <div class="hdr-l">
+    <div class="live-dot"></div>
+    <span class="hdr-title">ICU-Air-Twin
+      <span class="ver-tag">V5.0 · Eric-UVC UFM</span>
+    </span>
+  </div>
+  <div class="hdr-r">
+    <div class="hdr-chip">
+      <div>WARD <span class="v">ICU-B3</span> | BED <span class="v">302-A</span></div>
+      <div>MODEL <span class="v" style="color:var(--cyn)">Unified Field</span> | NODES <span class="v">6/6</span></div>
+    </div>
+    <div class="hdr-chip" style="text-align:right">
+      <div id="hdrDate">----/--/--</div>
+      <div id="hdrClock">--:--:--</div>
+    </div>
+  </div>
+</header>
+
+<!-- ── CONTROL BAR ── -->
+<div class="ctrlbar">
+  <button class="ctl-pill" id="srcToggle" onclick="toggleSrc()">
+    <div class="pill-dot"></div>
+    <span id="srcLabel">模擬數據</span>
+  </button>
+  <div class="ctl-sep"></div>
+  <div class="path-grp">
+    <label>目標病原體</label>
+    <select class="path-sel" id="pathSel" onchange="changePath()">
+      <option value="env">一般環境細菌 (k=0.30)</option>
+      <option value="flu">流感/結核桿菌 (k=0.15)</option>
+      <option value="mrsa" selected>MRSA 耐藥金葡菌 (k=0.08)</option>
+      <option value="cdiff">困難梭狀芽孢桿菌孢子 (k=0.02)</option>
+    </select>
+  </div>
+  <div class="ctl-sep"></div>
+  <span class="shield-tag s-off" id="shieldTag">η=1.00 無遮蔽</span>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="ctl-btn" onclick="toggleHvac()">🌬 HVAC 參數</button>
+    <button class="ctl-btn" onclick="toggleCal()">⚙ 係數設定</button>
+  </div>
+</div>
+
+<!-- ── HVAC PANEL ── -->
+<div class="hvac-panel" id="hvacPanel">
+  <div class="hvac-title">🌬 空調系統參數 · HVAC / Airflow Configuration</div>
+  <div class="hvac-grid">
+
+    <div class="hvac-block">
+      <div class="hvac-block-title">外氣條件 Outdoor Air</div>
+      <div class="hvac-row">
+        <label>C_out</label>
+        <input type="range" id="slCout" min="0" max="500" value="50" oninput="updHvac()">
+        <span class="hv" id="vCout">50 CFU/m³</span>
+      </div>
+      <div class="hvac-row">
+        <label>新鮮 ACH</label>
+        <input type="range" id="slAch" min="2" max="20" value="6" step="0.5" oninput="updHvac()">
+        <span class="hv" id="vAch">6.0 /h</span>
+      </div>
+    </div>
+
+    <div class="hvac-block">
+      <div class="hvac-block-title">回風系統 Recirculation</div>
+      <div class="hvac-row">
+        <label>回風開關</label>
+        <input type="checkbox" id="ckRecirc" onchange="updHvac()">
+        <span style="font-family:var(--mono);font-size:.6rem;color:var(--text)">啟用強制回風</span>
+      </div>
+      <div class="hvac-row">
+        <label>Qr (m³/s)</label>
+        <input type="range" id="slQr" min="0.1" max="3" value="0.5" step="0.1" oninput="updHvac()">
+        <span class="hv" id="vQr">0.50 m³/s</span>
+      </div>
+      <div class="hvac-row">
+        <label>濾網效率 ηh</label>
+        <input type="range" id="slEh" min="0.5" max="0.999" value="0.95" step="0.005" oninput="updHvac()">
+        <span class="hv" id="vEh">95.0 %</span>
+      </div>
+    </div>
+
+    <div class="hvac-block">
+      <div class="hvac-block-title">壓力模式 Pressure</div>
+      <div class="press-grp">
+        <button class="press-btn on" id="btnPos" onclick="setPress('pos')">正壓 (+)</button>
+        <button class="press-btn" id="btnNeg" onclick="setPress('neg')">負壓 (−)</button>
+        <button class="press-btn" id="btnNeu" onclick="setPress('neu')">中性</button>
+      </div>
+      <div style="margin-top:8px;font-family:var(--mono);font-size:.6rem;color:var(--mid)">
+        漏風係數 κ：<span class="hv" id="vKappa" style="color:var(--hi)">−0.0001/s</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:.59rem;color:var(--dim);margin-top:4px">
+        正壓：κ=−1×10⁻⁴ (排出)<br>負壓：κ=+2×10⁻⁴ (滲入)
+      </div>
+    </div>
+
+  </div>
+  <div class="hvac-note">
+    · V5.0 耦合方程：<span class="cn">dC/dt = (G + Q_fresh·C_out)/V + Q_r·(1−ηh)·C/V − [Q_fresh/V + Q_r·ηh/V + k·S·I + λ + κ]·C</span><br>
+    · 回風開啟時，<span class="gn">HEPA 貢獻</span>欄位將在 M04 貢獻圖表中即時更新 &nbsp;·&nbsp; 符合 <span class="gn">CDC AIIR 指引</span>
+  </div>
+</div>
+
+<!-- ── CAL PANEL ── -->
+<div class="cal-panel" id="calPanel">
+  <div class="cal-title">⚙ 現場校準 Field Calibration — CFU = k × PM₁₀ + b</div>
+  <div class="cal-formula">
+    <span class="sym">CFU</span> = <span class="sym">k</span> × PM₁₀ + <span class="sym">b</span>
+    &nbsp;→&nbsp; <span class="sym" id="calPrev">CFU = 8.5×PM₁₀ + 120</span>
+  </div>
+  <div class="cal-fields">
+    <div class="cal-field"><label>k (斜率)</label>
+      <input type="number" id="calK" value="8.5" step="0.1" oninput="prevCoeff()"></div>
+    <div class="cal-field"><label>b (截距)</label>
+      <input type="number" id="calB" value="120" step="5" oninput="prevCoeff()"></div>
+    <button class="cal-apply" onclick="applyCoeff()">套用係數</button>
+  </div>
+  <div class="cal-note">
+    · <span class="cn">感測器模式</span>下 CFU 由 PM₁₀ 即時換算 &nbsp;·&nbsp; 建議每季人工採樣比對更新
+  </div>
+</div>
+
+<!-- ══════════ 6-MODULE GRID ══════════ -->
+<div class="grid">
+
+<!-- M01: 生物感控 CFU -->
+<div class="cs cs-r" id="csM01">
+<div class="card">
+  <div class="ctag">M01 · 生物感控</div>
+  <div class="cname">落菌數 CFU Monitor</div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between">
+    <div>
+      <div class="bnrow">
+        <span class="bn" id="m1val" style="color:var(--red);text-shadow:0 0 20px rgba(255,68,85,.5)">---</span>
+        <span class="bnu">CFU/m³</span>
+      </div>
+      <div class="spkw"><canvas id="spkCfu"></canvas></div>
+    </div>
+    <div id="m1alert" style="display:none;font-size:1.4rem;color:var(--red);
+      animation:hR .65s step-end infinite;padding-top:2px">⚠</div>
+  </div>
+  <div class="cfu-est" id="cfuEst">預估值（動態質量平衡模型）</div>
+  <div class="cal-stamp">
+    <div>來源 <span class="cv" id="cfuSrcTag">UFM 物理模型</span></div>
+    <div>上次人工採樣校準 <span class="cv">2026/04/01</span></div>
+    <div>校準機構 <span class="ov">感控室 · 微生物組</span></div>
+  </div>
+  <div class="btrack" style="margin-top:8px">
+    <div class="bfill" id="m1bar" style="background:var(--red);box-shadow:0 0 6px rgba(255,68,85,.4);width:0%"></div>
+  </div>
+  <div class="sbar">
+    <span class="sbar-lbl">SENSOR HEALTH</span>
+    <div class="sbar-track"><div class="sbar-fill" id="m1sh" style="width:98%"></div></div>
+    <span class="sbar-val" id="m1shv">98%</span>
+  </div>
+  <div style="margin-top:9px">
+    <div class="halo hg" id="m1halo"><div class="halo-dot"></div><span id="m1htxt">NORMAL</span></div>
+  </div>
+</div>
+</div>
+
+<!-- M02: 空質監測 PM -->
+<div class="cs cs-b">
+<div class="card">
+  <div class="ctag">M02 · 空質監測</div>
+  <div class="cname">PM2.5 / PM10 / PM1.0 粒子分佈</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div>
+      <div class="sublabel">PM 2.5</div>
+      <div class="subrow">
+        <span class="sval" id="m2pm25" style="color:var(--blue)">--.-</span>
+        <span class="sunit">μg/m³</span>
+        <span class="rbadge" id="m2r25" style="color:var(--green)">LOW</span>
+      </div>
+      <div class="spkw sm"><canvas id="spkPm25"></canvas></div>
+    </div>
+    <div>
+      <div class="sublabel">PM 10</div>
+      <div class="subrow">
+        <span class="sval" id="m2pm10" style="color:var(--pur)">--.-</span>
+        <span class="sunit">μg/m³</span>
+        <span class="rbadge" id="m2r10" style="color:var(--green)">LOW</span>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:9px;padding-top:7px;border-top:1px solid rgba(255,255,255,.06)">
+    <div class="sublabel" style="margin-bottom:4px">粒子大小分佈 &amp; PM1.0 遮蔽觸發</div>
+    <div class="pdist">
+      <div class="pdrow"><span class="pdlbl">0.3µm</span>
+        <div class="pdtrack"><div class="pdfill" id="pd03" style="background:var(--blue)"></div></div>
+        <span class="pdval" id="pv03">---</span></div>
+      <div class="pdrow"><span class="pdlbl">0.5µm</span>
+        <div class="pdtrack"><div class="pdfill" id="pd05" style="background:var(--pur)"></div></div>
+        <span class="pdval" id="pv05">---</span></div>
+      <div class="pdrow"><span class="pdlbl">1.0µm</span>
+        <div class="pdtrack"><div class="pdfill" id="pd10" style="background:var(--cyn)"></div></div>
+        <span class="pdval" id="pv10">---</span></div>
+      <div class="pdrow" style="margin-top:3px;padding-top:4px;border-top:1px solid rgba(255,255,255,.05)">
+        <span class="pdlbl" style="color:var(--yel);width:40px">PM1.0</span>
+        <div class="pdtrack"><div class="pdfill" id="pdPm1" style="background:var(--yel)"></div></div>
+        <span class="pdval" id="pvPm1" style="width:52px">-- µg</span></div>
+    </div>
+    <div style="font-family:var(--mono);font-size:.54rem;color:var(--mid);margin-top:4px">
+      PM1.0 → S = exp(−0.005×PM1.0) &nbsp;|&nbsp; S &gt; 50: <span style="color:var(--yel)">遮蔽係數下降</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- M03: 環境參數 -->
+<div class="cs cs-y">
+<div class="card">
+  <div class="ctag">M03 · 環境參數</div>
+  <div class="cname">溫濕度 · λ 沉降率 · 微生物風險</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div>
+      <div class="sublabel">溫度 Temperature</div>
+      <div class="subrow">
+        <span class="sval" id="m3temp" style="color:var(--yel)">--.-</span>
+        <span class="sunit">°C</span>
+      </div>
+      <div class="spkw sm"><canvas id="spkTemp"></canvas></div>
+    </div>
+    <div>
+      <div class="sublabel">濕度 Humidity → λ (沉降率)</div>
+      <div class="subrow">
+        <span class="sval" id="m3hum" style="color:var(--ora)">--</span>
+        <span class="sunit">% RH</span>
+        <span style="font-family:var(--mono);font-size:.6rem;color:var(--mid);margin-left:auto">
+          λ=<span id="m3lambda" style="color:var(--yel)">--</span>/s
+        </span>
+      </div>
+      <div class="spkw sm"><canvas id="spkHum"></canvas></div>
+    </div>
+  </div>
+  <div id="bioBox" style="margin-top:8px;padding:8px 11px;border-radius:7px;
+    background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.16)">
+    <div class="sublabel" style="margin-bottom:3px">細菌 / 真菌最適生長風險</div>
+    <div class="halo hg" id="bioHalo"><div class="halo-dot"></div><span id="bioTxt">評估中…</span></div>
+    <div style="margin-top:4px;font-size:.59rem;color:var(--mid);line-height:1.5" id="bioSub"></div>
+  </div>
+</div>
+</div>
+
+<!-- M04: 流量控制 + 貢獻圖 -->
+<div class="cs cs-g">
+<div class="card">
+  <div class="ctag">M04 · 流量控制</div>
+  <div class="cname">採樣流量 · HEPA · 殺菌貢獻分析</div>
+  <div class="bnrow">
+    <span class="bn" style="color:var(--green);text-shadow:0 0 16px rgba(0,232,122,.4);font-size:2.8rem">2.83</span>
+    <span class="bnu">L/min</span>
+  </div>
+  <div class="spkw sm"><canvas id="spkFlow"></canvas></div>
+  <div class="stbl" style="margin-bottom:9px">
+    <div class="srow"><span class="sk">ACH (新鮮)</span><span class="sv ok" id="m4ach">6.0</span></div>
+    <div class="srow"><span class="sk">等效總 ACH</span><span class="sv ok" id="m4tach">--.-</span></div>
+    <div class="srow"><span class="sk">Filter ΔP</span><span class="sv" id="m4dp">-- Pa</span></div>
+    <div class="srow"><span class="sk">HEPA 狀態</span><span class="sv ok" id="m4hepa">清潔</span></div>
+    <div class="srow"><span class="sk">採樣穩定度</span><span class="sv ok">99.9 %</span></div>
+  </div>
+
+  <!-- Contribution Chart -->
+  <div class="contrib-wrap">
+    <div class="contrib-title">殺菌貢獻比例 (即時)</div>
+    <div class="contrib-bar" id="contribBar">
+      <div class="cb-seg" id="cbFresh" style="background:rgba(56,189,248,.85);width:33%"></div>
+      <div class="cb-seg" id="cbHepa"  style="background:rgba(167,139,250,.85);width:12%"></div>
+      <div class="cb-seg" id="cbUvc"   style="background:rgba(0,232,122,.9);width:55%"></div>
+    </div>
+    <div class="contrib-legend">
+      <div class="cl-item"><div class="cl-dot" style="background:rgba(56,189,248,.85)"></div>
+        新風稀釋 <span class="cl-val" id="legFresh">--%</span></div>
+      <div class="cl-item"><div class="cl-dot" style="background:rgba(167,139,250,.85)"></div>
+        HEPA 過濾 <span class="cl-val" id="legHepa">--%</span></div>
+      <div class="cl-item"><div class="cl-dot" style="background:rgba(0,232,122,.9)"></div>
+        <b>UVC LED</b> <span class="cl-val" id="legUvc" style="color:var(--green)">--%</span></div>
+    </div>
+    <div class="equiv-row">
+      <span class="equiv-k">等效 UVC ACH</span>
+      <span class="equiv-v best" id="equivUvc">-- /h</span>
+    </div>
+    <div class="equiv-row">
+      <span class="equiv-k">等效 HEPA ACH</span>
+      <span class="equiv-v" id="equivHepa">-- /h</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- M05: 現場負載 + 預測 -->
+<div class="cs cs-o">
+<div class="card">
+  <div class="ctag">M05 · 現場負載</div>
+  <div class="cname">區域人數 · CFU 預測 · Log-Reduction</div>
+  <div class="bnrow">
+    <span class="bn" id="m5occ" style="color:var(--ora);text-shadow:0 0 16px rgba(251,146,60,.4);font-size:2.8rem">-</span>
+    <span class="bnu">人 / persons</span>
+  </div>
+  <div class="odots" id="m5dots"></div>
+  <div class="stbl" style="margin-bottom:8px">
+    <div class="srow"><span class="sk">G 產生率</span><span class="sv warn" id="m5g">-- CFU/s</span></div>
+    <div class="srow"><span class="sk">管制上限</span><span class="sv ok">≤ 4 人</span></div>
+    <div class="srow"><span class="sk">區域狀態</span><span class="sv ok" id="m5zone">CLEAR</span></div>
+  </div>
+  <div class="pred-box">
+    <div class="pred-label">10 分鐘後 CFU 預測</div>
+    <div style="display:flex;align-items:baseline;gap:4px">
+      <span class="pred-val" id="m5pred">---</span>
+      <span style="font-family:var(--mono);font-size:.63rem;color:var(--mid)">CFU/m³</span>
+      <span class="pred-trend" id="m5trend"></span>
+    </div>
+  </div>
+  <!-- Log-Reduction & Time-to-target -->
+  <div style="margin-top:8px;padding:8px 11px;border-radius:7px;
+    background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.14)">
+    <div class="sublabel" style="margin-bottom:5px">預測性指標 Predictive Metrics</div>
+    <div class="stbl">
+      <div class="srow">
+        <span class="sk">Log-Reduction (1-log)</span>
+        <span class="sv" id="pmLR" style="color:var(--cyn)">-- min</span>
+      </div>
+      <div class="srow">
+        <span class="sk">達標時間 (→50 CFU)</span>
+        <span class="sv" id="pmT50" style="color:var(--cyn)">-- min</span>
+      </div>
+      <div class="srow">
+        <span class="sk">穩態 CFU 預估</span>
+        <span class="sv" id="pmSS">-- CFU/m³</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- M06: UVC 核心 -->
+<div class="cs cs-b">
+<div class="card">
+  <div class="ctag">M06 · UVC 核心</div>
+  <div class="cname">LED 強度 · 壽命 · 保養記錄</div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div>
+      <div class="sublabel">UVC 輸出強度 I</div>
+      <div style="display:flex;align-items:baseline;gap:5px">
+        <span class="uval" id="m6pwr">--.--</span><span class="uunit">mW/cm²</span>
+      </div>
+      <div class="spkw sm"><canvas id="spkUvc"></canvas></div>
+    </div>
+    <div>
+      <div class="sublabel">目前菌種 k 值</div>
+      <div style="font-family:var(--mono);font-size:1.3rem;font-weight:700;color:var(--pur)" id="m6kval">0.08 cm²/mJ</div>
+      <div style="font-family:var(--mono);font-size:.6rem;color:var(--mid);margin-top:2px" id="m6kname">MRSA</div>
+    </div>
+    <div>
+      <div class="sublabel">LED 剩餘壽命</div>
+      <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:5px">
+        <span class="uval" id="m6life">--.-</span><span class="uunit">%</span>
+      </div>
+      <div class="btrack">
+        <div class="bfill" id="m6lifebar"
+          style="background:var(--blue);box-shadow:0 0 6px rgba(56,189,248,.4);width:80%"></div>
+      </div>
+      <div class="halo hb" id="m6halo" style="margin-top:5px">
+        <div class="halo-dot"></div><span id="m6badge">GOOD</span>
+      </div>
+    </div>
+    <div class="maint-box">
+      <div>上次保養 <span class="mv">2026/03/01</span> (<span id="m6days">--</span> 天前)</div>
+      <div>模組更換倒數 <span class="mv" id="m6cntdown">計算中…</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div><!-- /grid -->
+
+<!-- LOG BAR -->
+<div class="log-bar" id="logBar">[SYS] ICU-Air-Twin V5.0 Unified Field Model — initialising…</div>
+
+<!-- SCIENCE BLOCK -->
+<div class="sci-block">
+  <div class="sci-hd">◈ 科學依據 · Unified Field Model V5.0 耦合微分方程</div>
+  <div class="sci-eq">
+    <span class="fhi">dC/dt</span> =
+    (<span class="fg">G</span> + <span class="fg">Q_fresh</span>·<span class="fy">C_out</span>) / V
+    + <span class="fg">Q_r</span>·(1−<span class="fk">η_h</span>)·C / V
+    − [<span class="fk">Q_fresh</span>/V + <span class="fk">Q_r</span>·<span class="fk">η_h</span>/V
+    + <span class="fr">k</span>·<span class="fhi">S</span>·<span class="fhi">I</span>
+    + <span class="fy">λ</span> + <span class="fk">κ</span>] · C
+    <br>
+    <span style="font-size:.65rem;color:var(--mid)">其中：</span>
+    <span class="fhi">S</span> = exp(−0.005 · PM₁.₀)
+    <span class="fy">λ</span> = λ₀ + α·(RH − 40)
+    <span class="fg">G</span> = N · g₀
+    <span class="fk">κ</span> ∈ {−1×10⁻⁴, +2×10⁻⁴, 0} s⁻¹
+  </div>
+  <div class="sci-vars">
+    <div><span class="vn">C</span> <span class="vv">= 空氣菌落濃度 (CFU/m³)</span></div>
+    <div><span class="vn">V</span> <span class="vv">= 房間體積 = 50 m³</span></div>
+    <div><span class="vn">G</span> <span class="vv">= 菌體產生率 = N × 5 CFU/s</span></div>
+    <div><span class="vn">k</span> <span class="vv">= 病原體殺菌係數 (cm²/mJ)</span></div>
+    <div><span class="vn">S</span> <span class="vv">= UVC 遮蔽係數 = exp(−0.005×PM₁.₀)</span></div>
+    <div><span class="vn">I</span> <span class="vv">= UVC 照射強度 (mW/cm²)</span></div>
+    <div><span class="vn">λ</span> <span class="vv">= 微粒自然沉降率 (s⁻¹)</span></div>
+    <div><span class="vn">η_h</span> <span class="vv">= HEPA 過濾效率 (0–0.999)</span></div>
+    <div><span class="vn">κ</span> <span class="vv">= 壓力漏風係數 (s⁻¹)</span></div>
+    <div><span class="vn">C_out</span> <span class="vv">= 外氣菌數基底 (CFU/m³)</span></div>
+  </div>
+  <div class="sci-refs">
+    <span class="rh">參考文獻 References：</span>
+    Kowalski, W. J. (2009). <i>Ultraviolet Germicidal Irradiation Handbook</i>. Springer. &nbsp;·&nbsp;
+    ASHRAE Standard 185.1-2020: UV-C Disinfection of HVAC Systems &nbsp;·&nbsp;
+    ASHRAE Standard 241-2023: Infection Risk Management &nbsp;·&nbsp;
+    CDC (2019). <i>Guidelines for Environmental Infection Control in Health-Care Facilities</i> (AIIR) &nbsp;·&nbsp;
+    符合 CDC 醫院環境通風與 AIIR 指引
+  </div>
+</div>
+
+</div><!-- /shell -->
+
+<!-- BOOST BUTTON -->
+<div class="boost-wrap" id="boostWrap" onclick="activateBoost()">
+  <svg class="bsvg" viewBox="0 0 86 86">
+    <circle class="rg" cx="43" cy="43" r="38"/>
+    <circle class="rf" id="boostRing" cx="43" cy="43" r="38"/>
+  </svg>
+  <div class="boost-inner" id="boostLabel">
+    <span style="font-size:.75rem">⚡</span>
+    <span>緊急強化<br>除菌</span>
+    <span style="color:rgba(255,68,85,.7)">BOOST</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ═══════════════ UTIL ═══════════════ */
+const $  = id=>document.getElementById(id);
+const ri = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const rf = (a,b,d=1)=>+((Math.random()*(b-a)+a).toFixed(d));
+const cl = (v,a,b)=>Math.min(Math.max(v,a),b);
+
+/* ═══════════════ CLOCK ═══════════════ */
+function tickClock(){
+  const n=new Date();
+  $('hdrClock').textContent=n.toLocaleTimeString('zh-TW',{hour12:false});
+  $('hdrDate').textContent=n.toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'});
+}
+setInterval(tickClock,1000); tickClock();
+
+/* ═══════════════ MAINTENANCE ═══════════════ */
+const LAST_MAINT=new Date('2026-03-01');
+function updMaint(){
+  const d=Math.floor((new Date()-LAST_MAINT)/86400000);
+  $('m6days').textContent=d;
+}
+updMaint();
+
+/* ═══════════════ PATHOGEN DB ═══════════════ */
+const PATHOGENS={
+  env:  {name:'一般環境細菌', k:0.30, col:'var(--green)'},
+  flu:  {name:'流感/結核桿菌', k:0.15, col:'var(--blue)'},
+  mrsa: {name:'MRSA',         k:0.08, col:'var(--red)'},
+  cdiff:{name:'C. diff 孢子', k:0.02, col:'var(--pur)'},
+};
+let curPath='mrsa';
+function changePath(){
+  curPath=$('pathSel').value;
+  const p=PATHOGENS[curPath];
+  $('m6kval').textContent=p.k+' cm²/mJ';
+  $('m6kname').textContent=p.name;
+  $('m6kval').style.color=p.col;
+  writeLog('ok',`[MODEL] 菌種 → ${p.name}  k = ${p.k} cm²/mJ`);
+}
+
+/* ═══════════════ HVAC STATE ═══════════════ */
+const V_ROOM=50;          // m³
+let achFresh=6, cOut=50;
+let recircOn=false, Qr=0.5, etaH=0.95;
+let pressMode='pos';
+
+const KAPPA={pos:-1e-4, neg:2e-4, neu:0};
+function setPress(m){
+  pressMode=m;
+  ['pos','neg','neu'].forEach(x=>{
+    $('btn'+x[0].toUpperCase()+x.slice(1)).classList.toggle('on',x===m);
+  });
+  $('vKappa').textContent=(KAPPA[m]>=0?'+':'')+KAPPA[m].toExponential(0)+'/s';
+  updHvac();
+}
+function updHvac(){
+  achFresh=parseFloat($('slAch').value);
+  cOut=parseFloat($('slCout').value);
+  recircOn=$('ckRecirc').checked;
+  Qr=parseFloat($('slQr').value);
+  etaH=parseFloat($('slEh').value);
+  $('vAch').textContent=achFresh.toFixed(1)+' /h';
+  $('vCout').textContent=cOut+' CFU/m³';
+  $('vQr').textContent=Qr.toFixed(2)+' m³/s';
+  $('vEh').textContent=(etaH*100).toFixed(1)+' %';
+  $('m4ach').textContent=achFresh.toFixed(1);
+}
+function toggleHvac(){ $('hvacPanel').classList.toggle('open'); }
+
+/* ═══════════════ CAL STATE ═══════════════ */
+let dataMode='sim', calK=8.5, calB=120;
+function toggleSrc(){
+  dataMode=dataMode==='sim'?'api':'sim';
+  const isApi=dataMode==='api';
+  $('srcToggle').classList.toggle('api',isApi);
+  $('srcLabel').textContent=isApi?'感測器 API':'模擬數據';
+  $('cfuSrcTag').textContent=isApi?`感測器(k=${calK},b=${calB})`:'UFM 物理模型';
+  writeLog(isApi?'lw':'lk',`[SRC] 切換至 ${isApi?'API':'UFM 物理模型'}`);
+}
+function toggleCal(){ $('calPanel').classList.toggle('open'); }
+function prevCoeff(){
+  const k=parseFloat($('calK').value)||0, b=parseFloat($('calB').value)||0;
+  $('calPrev').textContent=`CFU = ${k}×PM₁₀ + ${b}`;
+}
+function applyCoeff(){
+  calK=parseFloat($('calK').value)||8.5;
+  calB=parseFloat($('calB').value)||120;
+  const btn=document.querySelector('.cal-apply');
+  btn.textContent='✓ 已套用'; btn.style.color='var(--green)';
+  setTimeout(()=>{btn.textContent='套用係數';btn.style.color='';},1400);
+  writeLog('lk',`[CAL] k=${calK}  b=${calB} 已套用`);
+}
+
+/* ═══════════════ SPARKLINES ═══════════════ */
+const SLEN=32, DPR=Math.min(window.devicePixelRatio||1,2);
+class Spark{
+  constructor(id,col,mn,mx){
+    this.c=$(id); this.x=this.c.getContext('2d');
+    this.col=col; this.min=mn; this.max=mx;
+    this.buf=new Float32Array(SLEN).fill((mn+mx)/2);
+    this.ptr=0; this.dirty=true; this._sz();
+  }
+  _sz(){
+    const w=this.c.offsetWidth||200, h=this.c.offsetHeight||38;
+    this.c.width=w*DPR; this.c.height=h*DPR;
+    this.W=w*DPR; this.H=h*DPR; this.dirty=true;
+  }
+  push(v){ this.buf[this.ptr%SLEN]=cl(v,this.min,this.max); this.ptr++; this.dirty=true; }
+  draw(sf){
+    if(!this.dirty&&sf===this._ls) return; this._ls=sf; this.dirty=false;
+    const {x,W,H,buf,min,max,col,ptr}=this;
+    x.clearRect(0,0,W,H);
+    const r=max-min||1, step=W/(SLEN-1);
+    // grid
+    x.strokeStyle='rgba(255,255,255,.05)'; x.lineWidth=1;
+    for(let g=1;g<4;g++){x.beginPath();x.moveTo(0,H*g/4);x.lineTo(W,H*g/4);x.stroke();}
+    // fill
+    x.beginPath();
+    for(let i=0;i<SLEN;i++){
+      const idx=(ptr+i)%SLEN, px=i*step, py=H-((buf[idx]-min)/r)*H*.8-H*.08;
+      i===0?x.moveTo(px,py):x.lineTo(px,py);
+    }
+    x.lineTo(W,H);x.lineTo(0,H);x.closePath();
+    const g=x.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,col+'44');g.addColorStop(1,col+'00');
+    x.fillStyle=g;x.fill();
+    // line
+    x.beginPath();
+    for(let i=0;i<SLEN;i++){
+      const idx=(ptr+i)%SLEN, px=i*step, py=H-((buf[idx]-min)/r)*H*.8-H*.08;
+      i===0?x.moveTo(px,py):x.lineTo(px,py);
+    }
+    x.strokeStyle=col;x.lineWidth=1.6*DPR;x.lineJoin='round';x.stroke();
+    // scan cursor
+    const sx=sf*W;
+    const sg=x.createLinearGradient(sx-5*DPR,0,sx+2*DPR,0);
+    sg.addColorStop(0,'rgba(255,255,255,0)');sg.addColorStop(.6,col+'88');sg.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=sg;x.fillRect(sx-5*DPR,0,7*DPR,H);
+    const ti=(ptr+Math.round(sf*(SLEN-1)))%SLEN, ty=H-((buf[ti]-min)/r)*H*.8-H*.08;
+    x.beginPath();x.arc(sx,ty,2.4*DPR,0,Math.PI*2);x.fillStyle=col;x.fill();
+  }
+}
+const SPARKS={};
+function initSparks(){
+  SPARKS.cfu =new Spark('spkCfu', '#ff4455',100,1200);
+  SPARKS.pm25=new Spark('spkPm25','#38bdf8',  5,  80);
+  SPARKS.temp=new Spark('spkTemp','#fbbf24', 22,  27);
+  SPARKS.hum =new Spark('spkHum', '#fb923c', 45,  72);
+  SPARKS.flow=new Spark('spkFlow','#00e87a',2.7, 2.9);
+  SPARKS.uvc =new Spark('spkUvc', '#38bdf8',3.0, 6.0);
+}
+let scanPhase=0, lastTick=performance.now();
+function renderLoop(ts){
+  scanPhase=cl((ts-lastTick)/1000,0,1);
+  for(const k in SPARKS) SPARKS[k].draw(scanPhase);
+  requestAnimationFrame(renderLoop);
+}
+
+/* ═══════════════ PULSE ═══════════════ */
+function pulse(el){el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse');}
+
+/* ═══════════════ HELPERS ═══════════════ */
+function pmRisk(v,t1,t2){
+  if(v<t1)return{c:'var(--green)',l:'LOW'};
+  if(v<t2)return{c:'var(--yel)',  l:'MID'};
+  return{c:'var(--red)',l:'HIGH'};
+}
+function bioRisk(t,h){
+  const hs=h>65?2:h>58?1:0, ts=t>25.5?1:0, sc=hs+ts;
+  if(!sc)return{cls:'hg',txt:'低風險 · LOW',sub:'溫濕度在安全範圍內'};
+  if(sc===1)return{cls:'hy',txt:'中等風險 · MODERATE',sub:'細菌最適生長風險：中 · 建議除濕'};
+  return{cls:'hr',txt:'高風險 · HIGH',sub:'細菌最適生長風險：高 · 立即降濕 / 啟動 UVC'};
+}
+
+/* ═══════════════ STATE ═══════════════ */
+let occ=ri(1,3), uvcPwr=rf(4.0,5.2,2), lifePct=rf(76,90,1);
+let tempV=rf(23.8,24.8,1), humV=ri(52,60), sensorH=rf(96,99,1);
+let cfuC=380, pm1Val=20, logPtr=0;
+
+const MAX_OCC=8;
+const dotsWrap=$('m5dots');
+for(let i=0;i<MAX_OCC;i++){const d=document.createElement('div');d.className='odot';dotsWrap.appendChild(d);}
+const dotEls=[...dotsWrap.querySelectorAll('.odot')];
+
+const RING_C=2*Math.PI*38;
+$('boostRing').setAttribute('stroke-dasharray',RING_C.toFixed(1));
+$('boostRing').setAttribute('stroke-dashoffset',RING_C.toFixed(1));
+
+/* ═══════════════ LOG ═══════════════ */
+const LOGS=[
+  {c:'lk',t:'[UVC]   Sterilisation cycle nominal.'},
+  {c:'lk',t:'[FLOW]  Flow stable at 2.83 L/min.'},
+  {c:'lw',t:'[CFU]   Spike detected — UFM recalibrating.'},
+  {c:'lk',t:'[LED]   Thermal OK, Tj = 42 °C.'},
+  {c:'lw',t:'[ENV]   λ rising — humidity elevated.'},
+  {c:'lk',t:'[SYS]   Watchdog heartbeat OK.'},
+  {c:'lk',t:'[HEPA]  ΔP nominal.'},
+  {c:'lw',t:'[OCC]   Personnel movement Zone-B.'},
+  {c:'lk',t:'[UVC]   Output within spec (±3%).'},
+  {c:'lk',t:'[SYS]   HMIS sync complete.'},
+  {c:'lk',t:'[PART]  ISO Class-7 limit nominal.'},
+];
+function writeLog(c,t){
+  const ts=new Date().toLocaleTimeString('zh-TW',{hour12:false});
+  $('logBar').innerHTML=`<span class="${c}">[${ts}]  ${t}</span>`;
+}
+
+/* ═══════════════ MAIN TICK (1 s) ═══════════════
+   V5.0 Coupled ODE:
+   dC/dt = (G + Q_fresh·C_out)/V + Q_r·(1−ηh)·C/V
+           − [Q_fresh/V + Q_r·ηh/V + k·S·I + λ + κ]·C
+═══════════════════════════════════════════════════ */
+function dataTick(){
+  lastTick=performance.now(); scanPhase=0;
+
+  /* ── OCC (every 2 ticks) ── */
+  if(logPtr%2===0){
+    occ=cl(occ+ri(-1,1),1,7);
+    $('m5occ').textContent=occ;
+    dotEls.forEach((d,i)=>d.classList.toggle('on',i<occ));
+    const crowd=occ>4;
+    $('m5zone').textContent=crowd?'CROWDED':'CLEAR';
+    $('m5zone').className='sv '+(crowd?'warn':'ok');
+    $('m5g').textContent=(occ*5).toFixed(0)+' CFU/s';
+  }
+
+  /* ── PM ── */
+  const pm25=cl(rf(8+occ*.8,16+occ*1.5,1),5,75);
+  const pm10=cl(rf(14+occ*1.2,28+occ*2.2,1),10,140);
+  pm1Val=cl(pm1Val+rf(-1.2,1.2,1),4,75);
+  const pm1=cl(pm1Val+occ*3.2,4,78);
+
+  /* ── Shielding S = exp(−0.005·PM1.0) ── */
+  const S=Math.exp(-0.005*pm1);
+  const shielded=pm1>50;
+  const shTag=$('shieldTag');
+  shTag.textContent=`S=${S.toFixed(3)} `+(shielded?'遮蔽中':'無遮蔽');
+  shTag.className='shield-tag '+(shielded?'s-on':'s-off');
+
+  /* ── λ settling = λ0 + α*(RH-40) ── */
+  const LAM0=0.0005, ALPHA=1.5e-5;
+  const lambda=LAM0+(humV>40?ALPHA*(humV-40):0);
+
+  /* ── HVAC rates (s⁻¹) ── */
+  const Q_fresh=achFresh*V_ROOM/3600;  // m³/s
+  const rate_fresh=Q_fresh/V_ROOM;     // s⁻¹
+  const rate_hepa=recircOn?(Qr*etaH)/V_ROOM:0;
+  const rate_recirc_src=recircOn?(Qr*(1-etaH))/V_ROOM:0; // recirculated unfiltered fraction
+
+  /* ── UVC term ── */
+  const K_SCALE=0.0055;
+  const I_use=boostOn?100:uvcPwr;
+  const pathK=PATHOGENS[curPath].k;
+  const rate_uvc=pathK*S*I_use*K_SCALE;
+
+  /* ── κ pressure ── */
+  const kappa=KAPPA[pressMode];
+
+  /* ── total sink & source ── */
+  const total_sink=rate_fresh+rate_hepa+rate_uvc+lambda+kappa;
+  const G_rate=occ*5;  // CFU/s
+  const dCdt = (G_rate/V_ROOM + rate_fresh*cOut/V_ROOM)
+               + rate_recirc_src*cfuC
+               - total_sink*cfuC;
+  cfuC=cl(cfuC+dCdt,10,1400);
+
+  /* ── CFU display ── */
+  let cfu;
+  if(dataMode==='api'){
+    cfu=cl(Math.round(calK*pm10+calB+ri(-10,10)),10,1400);
+    $('cfuEst').textContent=`預估值（感測器模型 CFU = ${calK}×PM₁₀ + ${calB}）`;
+    $('cfuSrcTag').textContent=`感測器(k=${calK},b=${calB})`;
+  }else{
+    cfu=Math.round(cfuC+ri(-5,5));
+    $('cfuEst').textContent=`預估值（V5.0 UFM · ${PATHOGENS[curPath].name} · S=${S.toFixed(2)} · λ=${lambda.toExponential(1)}）`;
+    $('cfuSrcTag').textContent='UFM 物理模型';
+  }
+  cfu=cl(cfu,10,1400);
+  const isDanger=cfu>500;
+
+  const m1v=$('m1val'); pulse(m1v);
+  m1v.textContent=cfu;
+  $('m1bar').style.width=cl(((cfu-10)/1390)*100,0,100)+'%';
+  $('csM01').classList.toggle('is-alert',isDanger);
+  $('m1alert').style.display=isDanger?'block':'none';
+  $('m1halo').className='halo '+(isDanger?'hr':'hg');
+  $('m1htxt').textContent=isDanger?'⚠ ALERT > 500':'NORMAL';
+
+  sensorH=cl(+(sensorH+rf(-0.03,0.01,2)).toFixed(1),94,99.5);
+  $('m1sh').style.width=sensorH+'%'; $('m1shv').textContent=sensorH.toFixed(1)+'%';
+  SPARKS.cfu.push(cfu);
+
+  /* ── PM display ── */
+  const p25e=$('m2pm25'); pulse(p25e); p25e.textContent=pm25.toFixed(1);
+  const p10e=$('m2pm10'); pulse(p10e); p10e.textContent=pm10.toFixed(1);
+  const r25=pmRisk(pm25,15,35), r10=pmRisk(pm10,35,75);
+  $('m2r25').style.color=r25.c; $('m2r25').textContent=r25.l;
+  $('m2r10').style.color=r10.c; $('m2r10').textContent=r10.l;
+  $('pv03').textContent=Math.round(pm25*15+ri(-70,70));
+  $('pv05').textContent=Math.round(pm25*6+ri(-25,25));
+  $('pv10').textContent=Math.round(pm10*1.5+ri(-12,12));
+  $('pvPm1').textContent=pm1.toFixed(1)+' µg';
+  $('pd03').style.width=cl(pm25*15/3000*100,0,100)+'%';
+  $('pd05').style.width=cl(pm25*6/1200*100,0,100)+'%';
+  $('pd10').style.width=cl(pm10*1.5/400*100,0,100)+'%';
+  $('pdPm1').style.width=cl(pm1/78*100,0,100)+'%';
+  $('pdPm1').style.background=shielded?'var(--yel)':'var(--cyn)';
+  SPARKS.pm25.push(pm25);
+
+  /* ── Env ── */
+  tempV=cl(+(tempV+rf(-0.1,0.1,1)).toFixed(1),22.5,26.5);
+  humV=cl(humV+ri(-1,1),48,70);
+  const te=$('m3temp'); pulse(te); te.textContent=tempV.toFixed(1);
+  const he=$('m3hum');  pulse(he); he.textContent=humV;
+  $('m3lambda').textContent=lambda.toExponential(2);
+  const bio=bioRisk(tempV,humV);
+  $('bioHalo').className='halo '+bio.cls;
+  $('bioTxt').textContent=bio.txt; $('bioSub').textContent=bio.sub;
+  SPARKS.temp.push(tempV); SPARKS.hum.push(humV);
+
+  /* ── Flow / HEPA ── */
+  const dp=rf(11.5,14.0,1);
+  $('m4dp').textContent=dp.toFixed(1)+' Pa';
+  $('m4hepa').textContent=dp>13.5?'需要檢查':'清潔';
+  $('m4hepa').className='sv '+(dp>13.5?'warn':'ok');
+  const totalAch=(rate_fresh+rate_hepa)*3600;
+  $('m4tach').textContent=totalAch.toFixed(1);
+  SPARKS.flow.push(rf(2.81,2.85,3));
+
+  /* ── Contribution chart ── */
+  const tot=rate_fresh+rate_hepa+rate_uvc+lambda+kappa+1e-9;
+  const pFresh=rate_fresh/tot, pHepa=rate_hepa/tot, pUvc=rate_uvc/tot;
+  $('cbFresh').style.width=(pFresh*100).toFixed(1)+'%';
+  $('cbHepa').style.width=(pHepa*100).toFixed(1)+'%';
+  $('cbUvc').style.width=(pUvc*100).toFixed(1)+'%';
+  $('legFresh').textContent=(pFresh*100).toFixed(0)+'%';
+  $('legHepa').textContent=(pHepa*100).toFixed(0)+'%';
+  $('legUvc').textContent=(pUvc*100).toFixed(0)+'%';
+  $('equivUvc').textContent=(rate_uvc*3600).toFixed(1)+' /h';
+  $('equivHepa').textContent=(rate_hepa*3600).toFixed(1)+' /h';
+
+  /* ── Predictive metrics ── */
+  // Steady-state: C_ss = source_rate / total_sink
+  const src_rate=G_rate/V_ROOM + rate_fresh*cOut/V_ROOM;
+  const eff_sink=rate_fresh+rate_hepa+rate_uvc+lambda; // exclude recirculation source
+  const Css=cl(src_rate/eff_sink,10,2000);
+  $('pmSS').textContent=Math.round(Css)+' CFU/m³';
+  $('pmSS').className='sv '+(Css>500?'crit':Css>200?'warn':'ok');
+
+  // Time for 1-log reduction (90%): t = ln(10)/k_total
+  const t1log=2.303/eff_sink/60; // minutes
+  $('pmLR').textContent=t1log.toFixed(1)+' min';
+
+  // Time to 50 CFU: t = ln(C/50)/k_eff (if C > 50 and C > Css)
+  if(cfuC>50 && eff_sink>1e-6){
+    const ratio=(cfuC-Css)/(50-Css+0.01);
+    if(ratio>0){
+      const t50=Math.log(ratio)/eff_sink/60;
+      $('pmT50').textContent=t50>0?t50.toFixed(1)+' min':'已達標';
+    }else{ $('pmT50').textContent='已達標'; }
+  }else{ $('pmT50').textContent='已達標'; }
+
+  // 10-min prediction
+  const decayF=Math.exp(-eff_sink*600);
+  const predicted=Math.round(cfuC*decayF+Css*(1-decayF));
+  const trend=predicted>cfu?'↑':predicted<cfu-15?'↓':'→';
+  const tc=trend==='↑'?'var(--red)':trend==='↓'?'var(--green)':'var(--mid)';
+  $('m5pred').textContent=predicted;
+  $('m5trend').textContent=trend; $('m5trend').style.color=tc;
+
+  /* ── UVC ── */
+  uvcPwr=cl(+(uvcPwr+rf(-0.07,0.07,2)).toFixed(2),3.2,5.8);
+  if(!boostOn){ const pe=$('m6pwr'); pulse(pe); pe.textContent=uvcPwr.toFixed(2); }
+  SPARKS.uvc.push(uvcPwr);
+
+  lifePct=cl(+(lifePct-rf(0,0.012,3)).toFixed(1),0,100);
+  $('m6life').textContent=lifePct.toFixed(1);
+  $('m6lifebar').style.width=lifePct+'%';
+  const m6h=$('m6halo');
+  if(lifePct>50){m6h.className='halo hb';$('m6badge').textContent='GOOD';}
+  else if(lifePct>20){m6h.className='halo hy';$('m6badge').textContent='REPLACE SOON';}
+  else{m6h.className='halo hr';$('m6badge').textContent='⚠ REPLACE NOW';}
+  const hl=Math.round(lifePct/100*20000);
+  $('m6cntdown').textContent=hl>24?`約${Math.round(hl/24)}天 (${hl}h)`:'立即更換';
+
+  /* ── Log ── */
+  const l=LOGS[logPtr%LOGS.length]; logPtr++;
+  writeLog(l.c,l.t);
+}
+
+/* ═══════════════ BOOST ═══════════════ */
+const BOOST_SEC=30;
+let boostOn=false, boostLeft=0, boostTmr=null;
+
+/* DNA canvas animation */
+const dnaCvs=$('dnaCanvas');
+const dnaCtx=dnaCvs.getContext('2d');
+let dnaFrame=0;
+function drawDna(){
+  if(!boostOn){dnaCvs.classList.remove('on');return;}
+  dnaCvs.classList.add('on');
+  dnaCvs.width=window.innerWidth; dnaCvs.height=window.innerHeight;
+  dnaCtx.clearRect(0,0,dnaCvs.width,dnaCvs.height);
+  const W=dnaCvs.width, H=dnaCvs.height, t=dnaFrame*0.04;
+  dnaCtx.lineWidth=1.5;
+  for(let x=0;x<W;x+=18){
+    for(let y=0;y<H;y+=3){
+      const s=Math.sin((y*0.04+t));
+      const broken=Math.random()<0.08; // 8% chance of break
+      if(!broken){
+        const alpha=Math.abs(s)*0.6+0.1;
+        dnaCtx.strokeStyle=`rgba(34,211,238,${alpha})`;
+        dnaCtx.beginPath();
+        dnaCtx.moveTo(x+s*10,y);
+        dnaCtx.lineTo(x+s*10,y+2);
+        dnaCtx.stroke();
+        // complementary strand
+        dnaCtx.strokeStyle=`rgba(0,232,122,${alpha*0.6})`;
+        dnaCtx.beginPath();
+        dnaCtx.moveTo(x-s*10,y);
+        dnaCtx.lineTo(x-s*10,y+2);
+        dnaCtx.stroke();
+        // rungs (every ~8px)
+        if(y%8<3){
+          dnaCtx.strokeStyle=`rgba(255,255,255,${alpha*0.2})`;
+          dnaCtx.beginPath();
+          dnaCtx.moveTo(x+s*10,y+1);
+          dnaCtx.lineTo(x-s*10,y+1);
+          dnaCtx.stroke();
+        }
+      }
+    }
+  }
+  dnaFrame++;
+  if(boostOn) requestAnimationFrame(drawDna);
+}
+
+function activateBoost(){
+  if(boostOn) return;
+  boostOn=true; boostLeft=BOOST_SEC;
+  $('boostWrap').classList.add('on');
+  $('boostBanner').classList.add('on');
+  $('boostLabel').innerHTML='<span style="font-size:.9rem">⚡</span><span style="font-size:.58rem">ACTIVE<br>I=100</span>';
+  $('m6pwr').textContent='100.00';
+  $('boostRing').style.strokeDashoffset=RING_C.toFixed(1);
+  requestAnimationFrame(drawDna);
+
+  boostTmr=setInterval(()=>{
+    boostLeft--;
+    const elapsed=BOOST_SEC-boostLeft;
+    $('boostRing').style.strokeDashoffset=(RING_C*(1-elapsed/BOOST_SEC)).toFixed(2);
+    $('boostCd').textContent=`[ 剩餘 ${boostLeft} 秒 ]`;
+    const p=PATHOGENS[curPath];
+    const ts=new Date().toLocaleTimeString('zh-TW',{hour12:false});
+    $('logBar').innerHTML=`<span class="lc">[${ts}]  [BOOST] I=100 mW/cm²  k·S·I MAX  ${p.name} DSB誘導中  CFU→${Math.round(cfuC)}</span>`;
+    if(boostLeft<=0) endBoost();
+  },1000);
+}
+function endBoost(){
+  clearInterval(boostTmr); boostOn=false;
+  $('boostWrap').classList.remove('on');
+  $('boostBanner').classList.remove('on');
+  $('boostCd').textContent='';
+  $('boostLabel').innerHTML='<span style="font-size:.75rem">⚡</span><span>緊急強化<br>除菌</span><span style="color:rgba(255,68,85,.7)">BOOST</span>';
+  $('boostRing').style.strokeDashoffset=RING_C.toFixed(1);
+  uvcPwr=rf(4.0,5.2,2);
+  dnaCvs.classList.remove('on');
+  writeLog('lk','[BOOST] 殺菌循環完成 — 恢復標準監控模式');
+}
+
+/* ═══════════════ BOOT ═══════════════ */
+window.addEventListener('load',()=>{
+  initSparks();
+  for(let i=0;i<SLEN;i++){
+    SPARKS.cfu.push(ri(300,400)); SPARKS.pm25.push(rf(9,14,1));
+    SPARKS.temp.push(rf(23.8,24.8,1)); SPARKS.hum.push(ri(52,58));
+    SPARKS.flow.push(rf(2.82,2.84,3)); SPARKS.uvc.push(rf(4.2,5.0,2));
+  }
+  updHvac(); changePath();
+  dataTick();
+  setInterval(dataTick,1000);
+  requestAnimationFrame(renderLoop);
+});
+</script>
+</body>
+</html>
