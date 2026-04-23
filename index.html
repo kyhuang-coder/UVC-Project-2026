@@ -155,6 +155,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .odot{width:11px;height:11px;border-radius:50%;
   background:rgba(150,180,210,.3);border:1px solid rgba(150,180,210,.5);transition:background .3s,box-shadow .3s}
 .odot.on{background:var(--ora);border-color:var(--ora);box-shadow:0 0 7px rgba(251,146,60,.5)}
+/* ── 人數快填按鈕 ── */
+.occ-btns{display:flex;gap:5px;flex-wrap:wrap;margin:5px 0 2px}
+.occ-btn{font-family:var(--mono);font-size:.58rem;padding:3px 9px;border-radius:12px;
+  border:1px solid rgba(150,180,210,.5);background:rgba(150,180,210,.1);
+  color:var(--mid);cursor:pointer;transition:all .2s;white-space:nowrap}
+.occ-btn:hover{background:rgba(168,80,32,.15);border-color:var(--ora);color:var(--ora)}
+.occ-btn.active{background:rgba(168,80,32,.18);border-color:var(--ora);color:var(--ora);font-weight:700}
 
 /* ═══════════════════════════ CONTROL BARS ═══════════════════════════ */
 .ctrlbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -517,10 +524,10 @@ select.venue-sel{background:rgba(255,255,255,.95);border:1px solid rgba(42,127,2
     <label>目標病原體</label>
     <select class="path-sel" id="pathSel" onchange="changePath()">
       <option value="env">一般環境細菌 (k=0.30)</option>
-      <option value="sarscov2">SARS-CoV-2 (k=0.27)</option>
+      <option value="sarscov2" selected>SARS-CoV-2 (k=0.27)</option>
       <option value="flu">流感病毒 (k=0.15)</option>
       <option value="tb">結核桿菌 M.tb (k=0.10) · AIIR</option>
-      <option value="mrsa" selected>MRSA (k=0.08) ⚠接觸傳播</option>
+      <option value="mrsa">MRSA (k=0.08) ⚠接觸傳播</option>
       <option value="cdiff">C. diff 孢子 (k=0.02) ⚠接觸傳播</option>
     </select>
     <div id="pathRoute" style="font-family:var(--mono);font-size:.57rem;letter-spacing:.08em;color:var(--mid);margin-top:3px">傳播途徑：⚠ 主要為接觸傳播</div>
@@ -764,12 +771,12 @@ select.venue-sel{background:rgba(255,255,255,.95);border:1px solid rgba(42,127,2
         <div class="pdtrack"><div class="pdfill" id="pd10" style="background:var(--cyn)"></div></div>
         <span class="pdval" id="pv10">---</span></div>
       <div class="pdrow" style="margin-top:3px;padding-top:4px;border-top:1px solid rgba(255,255,255,.05)">
-        <span class="pdlbl" style="color:var(--yel);width:40px">PM1.0</span>
+        <span class="pdlbl" style="color:var(--yel);width:40px">PM1.0*</span>
         <div class="pdtrack"><div class="pdfill" id="pdPm1" style="background:var(--yel)"></div></div>
         <span class="pdval" id="pvPm1" style="width:52px">-- µg</span></div>
     </div>
     <div style="font-family:var(--mono);font-size:.54rem;color:var(--mid);margin-top:4px">
-      PM1.0 → S = exp(−0.005×PM1.0) &nbsp;|&nbsp; PM1.0 &gt; 50: <span style="color:var(--yel)">UVC 遮蔽效應</span>
+      S = exp(−0.005×<b>PM1.0*</b>) &nbsp;|&nbsp; *PM1.0 = PM2.5 × 0.72 推算（Rai 2020）&nbsp;|&nbsp; 直接量測建議使用 Sensirion SPS30 / Plantower PMS7003 &nbsp;|&nbsp; PM1.0 &gt;50: <span style="color:var(--yel)">遮蔽警示</span>
     </div>
     <div id="sensorWarn" style="display:none;margin-top:5px;padding:5px 9px;border-radius:5px;
       background:rgba(184,108,0,.08);border:1px solid rgba(184,108,0,.3);
@@ -872,6 +879,13 @@ select.venue-sel{background:rgba(255,255,255,.95);border:1px solid rgba(42,127,2
     <span class="bnu">人 / persons</span>
   </div>
   <div class="odots" id="m5dots"></div>
+  <div class="occ-btns" id="occBtns">
+    <button class="occ-btn" onclick="setOcc('min')"  title="最少（1人）">👤 Min</button>
+    <button class="occ-btn" onclick="setOcc('q1')"   title="¼ 容量">👥 ¼</button>
+    <button class="occ-btn" onclick="setOcc('half')" title="½ 容量">👫 ½</button>
+    <button class="occ-btn" onclick="setOcc('typ')"  title="典型負載">🏥 典型</button>
+    <button class="occ-btn" onclick="setOcc('max')"  title="最大容量">🚨 MAX</button>
+  </div>
   <div class="stbl" style="margin-bottom:8px">
     <div class="srow"><span class="sk">G 總產菌率</span><span class="sv warn" id="m5g">-- CFU/s</span></div>
     <div class="srow"><span class="sk">└ 呼吸底層</span><span class="sv" id="m5gBreath" style="color:var(--mid)">-- CFU/s</span></div>
@@ -937,6 +951,27 @@ select.venue-sel{background:rgba(255,255,255,.95);border:1px solid rgba(42,127,2
     </div>
     <div style="font-family:var(--mono);font-size:.56rem;color:var(--dim);margin-top:2px" id="pmWRnote">P = 1−exp(−I·q·p·t / Q)  ·  1 infector, p=8 L/min</div>
   </div>
+  <!-- 整合風險指數 URI -->
+  <div style="margin-top:8px;padding:8px 11px;border-radius:7px;
+    background:rgba(10,24,40,.04);border:1px solid rgba(42,64,96,.22)">
+    <div class="sublabel" style="margin-bottom:4px">整合風險指數 URI
+      <span style="font-size:.5rem;color:var(--dim);font-style:italic;margin-left:4px">（氣溶膠吸入 × 表面沉降 雙路徑）</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px">
+      <span style="font-family:var(--mono);font-size:2rem;font-weight:700" id="uriVal">--</span>
+      <span style="font-family:var(--mono);font-size:.62rem;color:var(--mid)">/ 100</span>
+      <span class="cm-badge" id="uriBadge" style="margin-left:4px">--</span>
+    </div>
+    <div style="display:flex;gap:0;height:8px;border-radius:4px;overflow:hidden;margin-bottom:5px;background:rgba(150,180,210,.15)">
+      <div id="uriBarWR"  style="height:100%;background:var(--red);transition:width .8s ease;width:0%"></div>
+      <div id="uriBarFm"  style="height:100%;background:var(--ora);transition:width .8s ease;width:0%"></div>
+    </div>
+    <div style="display:flex;gap:14px;font-family:var(--mono);font-size:.54rem;color:var(--mid)">
+      <span>🔴 氣溶膠吸入 (WR) <b id="uriWRpct">--%</b></span>
+      <span>🟠 表面沉降 (Fomite) <b id="uriFmpct">--%</b></span>
+    </div>
+    <div style="font-family:var(--mono);font-size:.54rem;color:var(--dim);margin-top:3px;line-height:1.6" id="uriNote"></div>
+  </div>
   <!-- 近場暴露風險 -->
   <div style="margin-top:8px;padding:8px 11px;border-radius:7px;
     background:rgba(80,64,176,.05);border:1px solid rgba(80,64,176,.18)">
@@ -964,6 +999,30 @@ select.venue-sel{background:rgba(255,255,255,.95);border:1px solid rgba(42,127,2
       background:rgba(192,48,48,.09);border:1px solid rgba(192,48,48,.3);
       font-family:var(--mono);font-size:.56rem;color:var(--red);line-height:1.6">
       🚨 鄰座 CFU 嚴重超標 — 立即佩戴 N95 並啟動 BOOST 除菌模式
+    </div>
+  </div>
+  <!-- 發聲強度分解條 -->
+  <div style="margin-top:8px;padding:8px 11px;border-radius:7px;
+    background:rgba(42,127,212,.05);border:1px solid rgba(42,127,212,.18)">
+    <div class="sublabel" style="margin-bottom:5px">產菌率分解 G-rate Breakdown
+      <span style="font-size:.52rem;color:var(--dim);font-style:italic;margin-left:4px">（呼吸底層 + 發聲追加）</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:baseline;margin-bottom:5px">
+      <div>
+        <div style="font-size:.50rem;color:var(--dim)">總產菌率</div>
+        <span style="font-family:var(--mono);font-size:1.05rem;font-weight:700;color:var(--blue)" id="gRateTotal">--</span>
+        <span style="font-size:.50rem;color:var(--dim)"> CFU/s</span>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;font-size:.48rem;color:var(--dim);margin-bottom:2px">
+          <span>呼吸 <span id="gBreathPct">--%</span></span>
+          <span>發聲 <span id="gSpeechPct">--%</span></span>
+        </div>
+        <div style="height:8px;border-radius:4px;overflow:hidden;background:rgba(0,0,0,.08)">
+          <div id="gSpeechBar" style="height:100%;background:linear-gradient(90deg,var(--cyn),var(--blue));border-radius:4px;transition:width .6s ease;width:0%"></div>
+        </div>
+        <div style="font-size:.46rem;color:var(--dim);margin-top:2px" id="gMultLabel">×-- 音量倍率</div>
+      </div>
     </div>
   </div>
   <!-- Hermes AI 即時診斷 -->
@@ -1062,7 +1121,7 @@ select.venue-sel{background:rgba(255,255,255,.95);border:1px solid rgba(42,127,2
     + <span class="fy">λ</span> + <span class="fk">κ</span>] · C
     <br>
     <span style="font-size:.65rem;color:var(--mid)">其中：</span>
-    <span class="fhi">S</span> = exp(−0.005 · PM₁.₀)
+    <span class="fhi">S</span> = exp(−0.005 · PM₁.₀)  <span style="font-size:.55rem;color:var(--mid)">[Mie 峰值 0.1–0.5 μm；Ko 2002]</span>
     <span class="fy">λ</span> = λ₀ + α·(RH − 40)
     <span class="fg">G</span> = N · g₀
     <span class="fk">κ</span> ∈ {−1×10⁻⁴, +2×10⁻⁴, 0} s⁻¹
@@ -1152,46 +1211,47 @@ updMaint();
 // Johnson et al. 2011 (J Aerosol Med 24:137): 大聲說話/唱歌可達 30–50 CFU/s 峰值
 // 口罩對 G_BREATH + G_SPEECH 均適用（source control 效果，CDC 2021）
 const G_BREATH=1.7;   // CFU/s per person，純呼吸基線（Morawska 2009）
-const G_SPEECH=15.0;  // CFU/s per person，發聲額外釋放（Asadi 2019）
+const G_SPEECH=20.0;  // CFU/s per person，正常說話上緣值（Asadi 2019 Sci Rep: 10–20 CFU/s）
+// Mürbe et al. 2021 (PLOS ONE): 大聲說話/唱歌可達 80–500 CFU/s → gMult 擴大範圍反映此差異
 // speechFrac: 場域平均發聲時間比例（0=完全靜默，1=持續說話）
-// gMult: 說話音量/飛沫強度修正（高動態場域如餐廳×2.5，手術室安靜×0.4）
+// gMult: 音量強度修正（靜默場域→近1，大聲社交→4+）
 
 /* ═══════════════ VENUE DATABASE ═══════════════ */
 // 各場域環境參數：影響 V_ROOM, ACH, 人員上限, G產菌係數, 呼吸率, 壓力模式, 溫濕度範圍
 const VENUES={
   // kScale: UVC 場域耦合係數（反射率高→大，深色吸音材料→小）
   // nfFactor: 近場曝露倍數（均勻混合背景CFU × nfFactor = 鄰近傳染者的局部濃度）
-  icu:        {name:'ICU 加護病房',   icon:'🏥', V:50,   achFresh:6,  occMax:8,   occTypical:3,   gMult:1.0, speechFrac:0.20, p_breath:1.33e-4,
+  icu:        {name:'ICU 加護病房',   icon:'🏥', V:50,   achFresh:6,  occMax:8,   occTypical:3,   gMult:0.8, speechFrac:0.20, p_breath:1.33e-4,
                tempR:[23,25], humR:[50,60], press:'neg', recirc:false, qrDefault:0.3,
                cfuWarn:500, kScale:0.0055, nfFactor:8,
                ashrae:'ASHRAE 170 / CDC AIIR',
                risk:'TB/COVID-19 AIIR 隔離室；負壓防病原體外洩'},
-  office:     {name:'開放式辦公室', icon:'🏢', V:200,  achFresh:3,  occMax:30,  occTypical:20,  gMult:0.8, speechFrac:0.65, p_breath:1.5e-4,
+  office:     {name:'開放式辦公室', icon:'🏢', V:200,  achFresh:3,  occMax:30,  occTypical:20,  gMult:1.0, speechFrac:0.65, p_breath:1.5e-4,
                tempR:[22,26], humR:[40,60], press:'neu', recirc:true,  qrDefault:1.2,
                cfuWarn:300, kScale:0.0035, nfFactor:30,
                ashrae:'ASHRAE 62.1 辦公室 ≥3 ACH 外氣',
                risk:'密集辦公；隔板造成大量光學陰影區；CO₂ 快速累積'},
-  conference: {name:'會議室',         icon:'👔', V:80,   achFresh:4,  occMax:20,  occTypical:10,  gMult:1.8, speechFrac:0.85, p_breath:2.0e-4,
+  conference: {name:'會議室',         icon:'👔', V:80,   achFresh:4,  occMax:20,  occTypical:10,  gMult:2.2, speechFrac:0.85, p_breath:2.0e-4,
                tempR:[22,25], humR:[40,60], press:'neu', recirc:false, qrDefault:0.5,
                cfuWarn:300, kScale:0.0042, nfFactor:15,
                ashrae:'ASHRAE 62.1 會議室 ≥4 ACH',
                risk:'發聲使氣溶膠倍增；密閉空間 CO₂ 快速達警戒'},
-  classroom:  {name:'教室',           icon:'🏫', V:180,  achFresh:3,  occMax:40,  occTypical:30,  gMult:1.2, speechFrac:0.55, p_breath:1.2e-4,
+  classroom:  {name:'教室',           icon:'🏫', V:180,  achFresh:3,  occMax:40,  occTypical:30,  gMult:1.5, speechFrac:0.55, p_breath:1.2e-4,
                tempR:[20,25], humR:[40,65], press:'neu', recirc:false, qrDefault:0.8,
                cfuWarn:300, kScale:0.0040, nfFactor:25,
                ashrae:'ASHRAE 62.1 教室 ≥3 ACH 外氣',
                risk:'兒童免疫弱；說話/歌唱飛沫多；常依賴自然通風'},
-  restaurant: {name:'餐廳',           icon:'🍽️', V:300,  achFresh:3,  occMax:80,  occTypical:40,  gMult:2.5, speechFrac:0.90, p_breath:2.2e-4,
+  restaurant: {name:'餐廳',           icon:'🍽️', V:300,  achFresh:3,  occMax:80,  occTypical:40,  gMult:4.0, speechFrac:0.90, p_breath:2.2e-4,
                tempR:[20,24], humR:[40,65], press:'neu', recirc:true,  qrDefault:2.0,
                cfuWarn:300, kScale:0.0030, nfFactor:40,
                ashrae:'ASHRAE 62.1 餐飲場所 ≥3 ACH',
                risk:'進食無口罩；說話量最大；超級傳播事件高發場域'},
-  cinema:     {name:'電影院',         icon:'🎬', V:1200, achFresh:2,  occMax:200, occTypical:120, gMult:0.6, speechFrac:0.05, p_breath:1.33e-4,
+  cinema:     {name:'電影院',         icon:'🎬', V:1200, achFresh:2,  occMax:200, occTypical:120, gMult:0.2, speechFrac:0.05, p_breath:1.33e-4,
                tempR:[20,23], humR:[40,55], press:'neu', recirc:true,  qrDefault:8.0,
                cfuWarn:200, kScale:0.0015, nfFactor:80,
                ashrae:'ASHRAE 62.1 娛樂場所 ≥2 ACH',
                risk:'深色吸音材 UVC 效率最低；高密度持續暴露；智慧啟動可省 60% 維護'},
-  or:         {name:'手術室',         icon:'⚕️', V:60,   achFresh:20, occMax:6,   occTypical:5,   gMult:0.4, speechFrac:0.15, p_breath:1.0e-4,
+  or:         {name:'手術室',         icon:'⚕️', V:60,   achFresh:20, occMax:6,   occTypical:5,   gMult:0.3, speechFrac:0.15, p_breath:1.0e-4,
                tempR:[17,23], humR:[40,60], press:'pos', recirc:true,  qrDefault:0.8,
                cfuWarn:100, kScale:0.0065, nfFactor:5,
                ashrae:'ASHRAE 170 手術室 ≥20 ACH',
@@ -1244,10 +1304,12 @@ const PATHOGENS={
   sarscov2:{name:'SARS-CoV-2',       k:0.27, col:'var(--blue)',  route:'高風險氣溶膠傳播',                                   qR:0.0139, lam0:2e-5, alpha_rh:0.008},
   flu:     {name:'流感病毒',           k:0.15, col:'var(--cyn)',  route:'氣溶膠 / 飛沫核',                                    qR:0.0278, lam0:5e-5, alpha_rh:0.012},
   tb:      {name:'結核桿菌 M.tb',     k:0.10, col:'var(--pur)', route:'專性空氣傳播',                                        qR:0.0008, lam0:1e-5, alpha_rh:0.015},
-  mrsa:    {name:'MRSA（耐藥金黃）', k:0.08, col:'var(--red)',  route:'氣溶膠沉降傳播（UVC 可主動截斷）',                   qR:0,      lam0:8e-4, alpha_rh:0.006},
+  mrsa:    {name:'MRSA（耐藥金黃）', k:0.08, col:'var(--red)',  route:'氣溶膠沉降傳播（UVC 可主動截斷）',                   qR:3e-4,   lam0:8e-4, alpha_rh:0.006},
+  // qR=3e-4：MRSA 氣溶膠傳播估算值（Eveillard 2010; Bhalla 2007 換藥/翻床場景）
+  // 注：C.diff 孢子需吞食感染 GI 道，吸入不致病，Wells-Riley（呼吸傳播模型）不適用
   cdiff:   {name:'C. diff 孢子',      k:0.02, col:'var(--ora)', route:'氣溶膠懸浮 / 接觸混合',                               qR:0,      lam0:5e-5, alpha_rh:0.003},
 };
-let curPath='mrsa';
+let curPath='sarscov2';
 function changePath(){
   curPath=$('pathSel').value;
   const p=PATHOGENS[curPath];
@@ -1414,8 +1476,9 @@ function bioRisk(t,h){
 let uvcOn=true;   // UVC 系統開關（false = 純 HVAC 對照模式）
 let occ=ri(1,3), uvcPwr=rf(4.0,5.2,2), lifePct=rf(76,90,1);
 let tempV=rf(23.8,24.8,1), humV=ri(52,60), sensorH=rf(96,99,1);
-let cfuC=380, pm1Val=20, logPtr=0;
-let aucTotal=0; // CFU·s/m³ accumulated since load
+let cfuC=380, logPtr=0;
+let aucTotal=0;     // CFU·s/m³ 氣溶膠累積暴露
+let fomiteAUC=0;   // CFU·λ·s/m³ 表面沉降累積量（Fomite 風險）
 let wrElapsed=0; // seconds since last pathogen change (for Wells-Riley dynamic t)
 let infectorCount=1; // Wells-Riley 感染源人數 I（可調）
 let maskEff=0;       // 口罩效率（0=無口罩, 0.5=外科, 0.8=N95）
@@ -1455,6 +1518,24 @@ function writeLog(c,t){
    dC/dt = (G + Q_fresh·C_out)/V + Q_r·(1−ηh)·C/V
            − [Q_fresh/V + Q_r·ηh/V + k·S·I + λ + κ]·C
 ═══════════════════════════════════════════════════ */
+/* ═══════════════ OCC QUICK-SET ═══════════════ */
+function setOcc(preset){
+  const v=VENUES[venueKey];
+  const targets={
+    min:  1,
+    q1:   Math.max(1,Math.round(v.occMax*0.25)),
+    half: Math.max(1,Math.round(v.occMax*0.5)),
+    typ:  v.occTypical,
+    max:  v.occMax
+  };
+  occ=cl(targets[preset],1,v.occMax);
+  // 高亮當前按鈕
+  [...document.querySelectorAll('.occ-btn')].forEach((b,i)=>{
+    b.classList.toggle('active',['min','q1','half','typ','max'][i]===preset);
+  });
+  writeLog('lk',`[OCC] 手動設定 → ${occ} 人（${preset}）`);
+}
+
 /* ═══════════════ UVC TOGGLE ═══════════════ */
 function toggleUvc(){
   if(boostOn) return;  // BOOST 中不允許關閉
@@ -1473,7 +1554,7 @@ function toggleUvc(){
 
 /* ═══════════════ SESSION RESET ═══════════════ */
 function resetSession(){
-  aucTotal=0; wrElapsed=0;
+  aucTotal=0; wrElapsed=0; fomiteAUC=0;
   $('pmAuc').textContent='0'; $('pmAuc').style.color='var(--green)';
   $('aucSurfAlert').style.display='none';
   $('pmWR').textContent='0.00'; $('pmWR').style.color='var(--green)';
@@ -1509,8 +1590,12 @@ function hermesAnalyze(){
     lines.push(`換氣強勁 eACH=${eAch.toFixed(1)}：${pName} 滯留時間短，累積劑量受控`);
 
   // L2: MRSA / C.diff 優先顯示「源頭攔截」論點，其次才是一般風險警示
+  const lam0_cur=PATHOGENS[curPath].lam0;
+  const depositMin=(cfuC*lam0_cur*60).toFixed(2);
   if(curPath==='mrsa'||curPath==='cdiff')
-    lines.push(`💡 專家觀點：偵測到 ${pName}。雖傳統歸類為接觸傳播，但氣溶膠懸浮才是主要媒介。UVC 正在執行「源頭攔截」，防止病原體沉降至表面形成 fomite。`);
+    lines.push(`💡 源頭攔截：${pName} 沉降通量 ${depositMin} CFU/m³/min，空中懸浮菌正持續轉化為表面 fomite。UVC 在沉降前消滅病原，同步截斷氣溶膠與接觸兩條傳播路徑。`);
+  else if(lam0_cur>1e-4)
+    lines.push(`▲ 注意沉降：${pName} 沉降速率偏高（λ=${lam0_cur.toExponential(1)} s⁻¹），目前有 ${depositMin} CFU/m³/min 正轉化為表面污染，建議同步加強表面消毒。`);
   else if(nfNear>2000)
     lines.push(`🚨 近場高危：鄰座 ${nfNear.toLocaleString()} CFU/m³，N95 口罩為必要防護`);
   else if(aucMin>=1000)
@@ -1554,13 +1639,21 @@ function dataTick(){
     co2El.className='sv '+(co2_ss>2000?'crit':co2_ss>1000?'warn':co2_ss>600?'':'ok');
   }
 
-  /* ── PM ── */
+  /* ── PM ──
+     PM1.0 由 PM2.5 推算：室內環境 PM1.0/PM2.5 比例約 0.65–0.80（均值 0.72）
+     Rai et al. 2020 (Sci. Total Environ.); Liu et al. 2019 (Atmos. Environ.)
+     若感測器僅提供 PM2.5（如 Honeywell HPMA115、Nova SDS011）：PM1.0 ≈ PM2.5 × 0.72
+     若使用 PM1.0 直接量測感測器（Sensirion SPS30、Plantower PMS7003）精度更高 ── */
   const pm25=cl(rf(8+occ*.8,16+occ*1.5,1),5,75);
   const pm10=cl(rf(14+occ*1.2,28+occ*2.2,1),10,140);
-  pm1Val=cl(pm1Val+rf(-1.2,1.2,1),4,75);
-  const pm1=cl(pm1Val+occ*3.2,4,78);
+  const pm1Ratio=rf(0.68,0.76,2);          // 室內 PM1.0/PM2.5 比例（Rai 2020）
+  const pm1=cl(pm25*pm1Ratio,3,60);        // PM1.0 ≤ PM2.5，物理正確
 
-  /* ── Shielding S = exp(−0.005·PM1.0) — PM1.0 (< 1μm) 最高效散射 254 nm UVC ── */
+  /* ── Shielding S = exp(−0.005·PM1.0)
+     Mie 散射理論（Bohren & Huffman 1983）：254 nm UV 散射截面峰值在粒徑 d≈0.1–0.5 μm
+     → PM1.0（<1 μm）單位質量消光係數最大，為 254 nm UVC 遮蔽最相關粒徑分段
+     → PM2.5/PM10 含粒徑 >1 μm 粗粒子，散射效率低且快速沉降，使用會高估遮蔽效應
+     實驗佐證：Ko et al. 2002 (Appl. Environ. Microbiol.); Blatchley et al. 2005 ── */
   const S=Math.exp(-0.005*pm1);
   const shielded=pm1>50;
   const shTag=$('shieldTag');
@@ -1720,9 +1813,9 @@ function dataTick(){
   $('wrElapsedDisp').textContent=Math.floor(wrElapsed/60);
   if(p_WR.qR===0){
     $('pmWR').textContent='N/A'; $('pmWR').style.color='var(--mid)';
-    $('pmWRnote').textContent='⚠ 接觸傳播病原體，空氣 Wells-Riley 模型不適用';
+    $('pmWRnote').textContent='C. diff 孢子需吞食感染 GI 道，吸入不致病 → 呼吸傳播模型（Wells-Riley）不適用；請重視手衛生與表面消毒';
     $('cmWRval').textContent='N/A'; $('cmWRval').style.color='var(--mid)';
-    $('cmWRB').textContent='接觸傳播'; $('cmWRB').className='cm-badge na';
+    $('cmWRB').textContent='吸入不適用'; $('cmWRB').className='cm-badge na';
   }else{
     const Q_fresh_wr=achFresh*V_ROOM/3600;
     const p_breath=venueP_breath;  // 場域呼吸率
@@ -1730,13 +1823,43 @@ function dataTick(){
     const P_wr=Math.min((1-Math.exp(-infectorCount*qR_adj*p_breath*wrElapsed/Q_fresh_wr))*100,99.99);
     const wrColor=P_wr>5?'var(--red)':P_wr>1?'var(--yel)':'var(--green)';
     $('pmWR').textContent=P_wr.toFixed(2); $('pmWR').style.color=wrColor;
-    $('pmWRnote').textContent=`P=1−exp(−I·q·p·t/Q)  I=${infectorCount}人  q=${(qR_adj*3600).toFixed(2)} q/h（口罩修正）  t=${Math.floor(wrElapsed/60)} min`;
+    const wrNote=curPath==='mrsa'
+      ?`P=1−exp(−I·q·p·t/Q)  q=${(qR_adj*3600).toFixed(3)} q/h（MRSA 氣溶膠成分估算，Eveillard 2010）  接觸傳播仍為主要路徑`
+      :`P=1−exp(−I·q·p·t/Q)  I=${infectorCount}人  q=${(qR_adj*3600).toFixed(2)} q/h（口罩修正）  t=${Math.floor(wrElapsed/60)} min`;
+    $('pmWRnote').textContent=wrNote;
     $('cmWRval').textContent=P_wr.toFixed(2)+'%'; $('cmWRval').style.color=wrColor;
     const cmWRBEl=$('cmWRB');
     if(P_wr>5){cmWRBEl.textContent='HIGH RISK';cmWRBEl.className='cm-badge crit';}
     else if(P_wr>1){cmWRBEl.textContent='MODERATE';cmWRBEl.className='cm-badge warn';}
     else{cmWRBEl.textContent='LOW RISK';cmWRBEl.className='cm-badge ok';}
   }
+
+  // ── 整合風險指數 URI（氣溶膠吸入 + 表面沉降雙路徑）──
+  // 沉降累積：depositRate = cfuC × lambda（CFU/m³/s 沉降通量）
+  fomiteAUC += cfuC * lambda;
+  // 表面風險分數：tanh 正規化（threshold 500 → MRSA 1hr@200CFU ≈ 82%，TB ≈ 1.4%）
+  const fm_p = Math.tanh(fomiteAUC / 500);
+  // 氣溶膠分數：來自 Wells-Riley（接觸傳播病原體 qR=0 時為 0）
+  const p_WR_val = PATHOGENS[curPath].qR > 0
+    ? parseFloat($('pmWR').textContent) / 100 || 0
+    : 0;
+  // URI = 至少一條路徑感染的複合概率
+  const uri_val = Math.round((1 - (1-p_WR_val)*(1-fm_p)) * 100);
+  const uriColor = uri_val>=50?'var(--red)':uri_val>=20?'var(--yel)':'var(--green)';
+  $('uriVal').textContent = uri_val;
+  $('uriVal').style.color = uriColor;
+  const uriB=$('uriBadge');
+  if(uri_val>=50){uriB.textContent='HIGH RISK';uriB.className='cm-badge crit';}
+  else if(uri_val>=20){uriB.textContent='MODERATE';uriB.className='cm-badge warn';}
+  else{uriB.textContent='LOW';uriB.className='cm-badge ok';}
+  // 雙路徑拆分條（氣溶膠 | 沉降，各佔百分比空間）
+  const wrPct=Math.round(p_WR_val*100), fmPct=Math.round(fm_p*100);
+  $('uriBarWR').style.width=wrPct+'%'; $('uriBarFm').style.width=fmPct+'%';
+  $('uriWRpct').textContent=wrPct+'%'; $('uriFmpct').textContent=fmPct+'%';
+  // URI 文字說明（依沉降率突顯「空中→表面」轉化）
+  const depositRateDisp=(cfuC*lambda*60).toFixed(2);  // CFU/m³/min
+  $('uriNote').textContent=
+    `沉降通量 ${depositRateDisp} CFU/m³/min → 空氣中的菌正轉化為表面污染（Fomite）。UVC 攔截可同步截斷兩條路徑。`;
 
   /* ── Critical Metrics Bar 更新 ── */
   $('cmCfu').textContent=cfu;
@@ -1766,6 +1889,17 @@ function dataTick(){
 
   // ── 感測器濕度干擾警告 ──
   $('sensorWarn').style.display=humV>75?'block':'none';
+
+  // ── 發聲強度分解條 ──
+  const G_breath_total=occ*G_BREATH*(1-maskEff);
+  const G_speech_total=occ*G_SPEECH*speechFrac*venueGMult*(1-maskEff);
+  const G_total=G_breath_total+G_speech_total;
+  const speechPct=G_total>0?Math.round(G_speech_total/G_total*100):0;
+  $('gRateTotal').textContent=G_total.toFixed(1);
+  $('gBreathPct').textContent=(100-speechPct)+'%';
+  $('gSpeechPct').textContent=speechPct+'%';
+  $('gSpeechBar').style.width=speechPct+'%';
+  $('gMultLabel').textContent='×'+venueGMult.toFixed(1)+' 音量倍率　speechFrac='+speechFrac.toFixed(2);
 
   // ── 近場暴露風險 ──
   const nfFactor=VENUES[venueKey].nfFactor;
